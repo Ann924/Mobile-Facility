@@ -54,11 +54,6 @@ def independent_LP():
     print(opened_facilities)
     print(assigned_locations)
 
-independent_LP()
-print("------------------------")
-my_lp = MILP(G, client_locations, 1)
-my_lp.solve_lp()
-
 #TODO: test more distances and costs
 '''G = nx.complete_graph(10)
 nx.set_edge_attributes(G, 1, 'distance')
