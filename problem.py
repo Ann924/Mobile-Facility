@@ -88,9 +88,3 @@ class LP:
         for address in self.Y.keys():
             if self.Y[address].solution_value()>0:
                 print(str(address) + "\t" + str(self.Y[address].solution_value()))
-
-#TODO: test more distances and costs
-G = nx.complete_graph(5)
-nx.set_edge_attributes(G, 1, 'distance')
-my_lp = LP(G, [{0, 1, 2}], 1)
-my_lp.solve_lp()
