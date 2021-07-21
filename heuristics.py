@@ -6,14 +6,18 @@ from utils import cost
 #Possible heuristics: independent rounding, dependent rounding, dispersion (Madhav's version), k-median (w/ houses), high traffic areas
 
 #TODO: test more distances and costs
-def independent_LP():
-    #G = nx.complete_graph(10)
-    #nx.set_edge_attributes(G, 1, 'distance')
+
+def generate_input():
     poi_count = 10
     G = [[10*random.random() for i in range(poi_count-k)] for k in range(poi_count-1, -1, -1)]
     for l in G:
         print(['{:.2f}'.format(i) for i in l])
     client_locations = [[0, 1, 2], [3, 4]]
+    return G, client_locations
+
+def independent_LP(G, client_locations, k):
+    #G = nx.complete_graph(10)
+    #nx.set_edge_attributes(G, 1, 'distance')
     my_lp = LP(G, client_locations, 1)
     my_lp.solve_lp()
     X, Y = my_lp.get_variable_solution()
@@ -53,6 +57,9 @@ def independent_LP():
                     assigned_locations.append((loc, facility))
     print(opened_facilities)
     print(assigned_locations)
+
+G, client_locations = generate_input()
+independent_LP(G, client_locations, 1)
 
 #TODO: test more distances and costs
 '''G = nx.complete_graph(10)
