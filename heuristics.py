@@ -53,7 +53,20 @@ def independent_LP():
                     assigned_locations.append((loc, facility))
     print(opened_facilities)
     print(assigned_locations)
+    
+def fpt():
+    
 
+def center_of_centers():
+    
+
+def center_of_homes():
+    
+    
+def _k_center(k: int, locations: list, clients: list):
+    
+    
+    
 #TODO: test more distances and costs
 '''G = nx.complete_graph(10)
 nx.set_edge_attributes(G, 1, 'distance')
