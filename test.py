@@ -1,4 +1,5 @@
 import networkx as nx
+from problem import *
 
 #TODO: test more distances and costs
 G = nx.complete_graph(5)

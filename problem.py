@@ -39,7 +39,7 @@ class LP:
         for ind in range(len(self.client_locations)):
             for loc in self.client_locations[ind]:
                 #Will not assign a client from a visited location to facility that is another visited location
-                for node in set(G.nodes)-(self.client_locations[ind]-{loc}):
+                for node in set(self.G.nodes)-(self.client_locations[ind]-{loc}):
                     self.Y[address(ind, loc, node)] = self.solver.NumVar(0, 1, f"y_{ind, loc, node}")
         
         self.w = self.solver.NumVar(0, self.solver.infinity(), 'w')
