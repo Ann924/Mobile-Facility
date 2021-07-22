@@ -61,3 +61,28 @@ def center_of_centers():
 
 def center_of_homes(G: List[List[int]], client_locations: List[List[int]], k: int):
     print()
+
+def _k_supplier(distances: List[List[int]], clients: List[int], locations: List[int], k: int):
+    
+    possible_OPT = [i for k in distances for i in k]
+    possible_OPT.sort()
+    
+    l = 0;
+    r = len(possible_OPT)-1
+    to_ret = -1
+    
+    while l <= r:
+  
+        mid = l + (r - l) // 2;
+          
+        if _check_radius(mid, distances, clients, locations, k):
+            l = mid + 1
+            to_ret = mid
+        else:
+            r = mid - 1
+            
+    return to_ret
+
+def _check_radius(radius: int, distances: List[List[int]], clients: List[int], locations: List[int], k: int):
+    print()
+    
