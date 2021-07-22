@@ -3,6 +3,7 @@ import random
 from collections import namedtuple
 
 address = namedtuple('address', ['index', 'location', 'facility'])
+assignment = namedtuple('assignment', ['location', 'facility'])
 
 def cost(G: List[List[float]], loc1, loc2):
     if loc1==loc2: return 0
