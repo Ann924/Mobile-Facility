@@ -6,15 +6,19 @@ address = namedtuple('address', ['index', 'location', 'facility'])
 assignment = namedtuple('assignment', ['location', 'facility'])
 
 def cost(G: List[List[float]], loc1, loc2):
+    """
+    """
     if loc1==loc2: return 0
     elif loc1 < loc2:
         return G[loc2][loc1]
     else:
         return G[loc1][loc2]
 
-#Fills in the adjacency matrix with random float distances in (0, 10)
-#If constant=True, defaults to adjacency matrix of 1
 def generate_input(constant = False):
+    """
+    Fills in the adjacency matrix with random float distances in (0, 10)
+    If constant=True, defaults to adjacency matrix of 1
+    """
     poi_count = 10
     if constant:
         G = [[1 for i in range(poi_count-k)] for k in range(poi_count-1, -1, -1)]
@@ -24,6 +28,7 @@ def generate_input(constant = False):
         row[-1] = 0
     return G
 
+#TODO: If homes are excluded from the problem entirely
 def assign_facilities(G: List[List[float]], client_locations, X_rounded):
     Y_reassigned = {}
     
@@ -39,7 +44,8 @@ def assign_facilities(G: List[List[float]], client_locations, X_rounded):
         Y_reassigned[address(index, min_loc[1], min_loc[2])] = 1
     return Y_reassigned
 
-def calculate_objective(G: List[List[float]], X, Y):
+#TODO: If homes are excluded are excluded from the problem entirely
+def calculate_objective(G: List[List[float]], X, Y, homes_excluded = False):
     max_obj_value = 0
     for key in Y.keys():
         obj_val = cost(G, key.location, key.facility)*Y[key]
