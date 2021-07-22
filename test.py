@@ -44,4 +44,4 @@ def test_K():
     format_location_output(X_home, Y_home)
 
 test_LP()
-test_K()
+#test_K()
