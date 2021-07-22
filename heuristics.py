@@ -5,7 +5,6 @@ from round import *
 from utils import cost, generate_input, assign_facilities
 
 #Possible heuristics: independent rounding, dependent rounding, dispersion (Madhav's version), k-median/k-center (w/ houses), high traffic areas
-#TODO: test more distances and costs
 
 def independent_LP(G, client_locations, k):
     my_lp = LP(G, client_locations, k)
@@ -33,23 +32,20 @@ def dependent_LP(G, client_locations, k):
     Y_reassigned = assign_facilities(G, client_locations, X_rounded)
     
     return X_rounded, Y_reassigned
-    
-def k_center(G, clients, k):
-    my_lp = K_LP(G, clients, k)
-    my_lp.solve_lp()
-    X, Y = my_lp.get_variable_solution()
-    
 
-def integer_k_center(G, clients, k):
-    my_lp = integer_K_LP(G, clients, k)
-    my_lp.solve_lp()
-    X, Y = my_lp.get_variable_solution()
-    
 def fpt():
-    
+    print()
 
 def center_of_centers():
-    
+    print()
 
-def center_of_homes():
+def center_of_homes(G, client_locations: List[List[int]], k):
+    #reformat input of client_locations to contain only the home location (as a list with a single element)
+    clients = [[visited[0]] for visited in client_locations]
     
+    #use integer program
+    my_lp = MILP(G, clients, k)
+    my_lp.solve_lp()
+    X, Y = my_lp.get_variable_solution()
+    
+    return X, Y
