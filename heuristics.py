@@ -70,19 +70,50 @@ def _k_supplier(distances: List[List[int]], clients: List[int], locations: List[
     l = 0;
     r = len(possible_OPT)-1
     to_ret = -1
+    pairwise_disjoint = set()
     
     while l <= r:
   
         mid = l + (r - l) // 2;
-          
-        if _check_radius(mid, distances, clients, locations, k):
+        
+        pairwise_disjoint =  _check_radius(possible_OPT[mid], distances, clients, locations, k)
+        if len(pairwise_disjoint) <= k:
             l = mid + 1
             to_ret = mid
         else:
             r = mid - 1
-            
-    return to_ret
+    
+    if to_ret >= 0:
+        print(possible_OPT[to_ret])
+        facilities = _locate_facilities(possible_OPT[to_ret], distances, pairwise_disjoint, locations, k)
+        return facilities
+    else:
+        print("BAD CODE")
+
 
 def _check_radius(radius: int, distances: List[List[int]], clients: List[int], locations: List[int], k: int):
-    print()
     
+    pairwise_disjoint = set()
+    
+    V = set(clients)
+    while len(V)!=0:
+        v = V.pop()
+        pairwise_disjoint.add(v)
+        remove = set()
+        for i in V:
+            if cost(distances,v,i)<2*radius:
+                remove.add(i)
+        V-=remove
+    
+    return pairwise_disjoint
+
+
+def _locate_facilities(radius: int, distances: List[List[int]], pairwise_disjoint: Set[int], locations: List[int], k: int):
+    
+    facilities = set()
+    for c in pairwise_disjoint:
+        for l in locations:
+            if cost(distances, c, l)< 2*radius:
+                facilities.add(l)
+                break
+    return facilities
