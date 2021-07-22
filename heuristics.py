@@ -44,3 +44,12 @@ def integer_k_center(G, clients, k):
     my_lp = integer_K_LP(G, clients, k)
     my_lp.solve_lp()
     X, Y = my_lp.get_variable_solution()
+    
+def fpt():
+    
+
+def center_of_centers():
+    
+
+def center_of_homes():
+    
