@@ -12,31 +12,42 @@ def cost(G: List[List[float]], loc1, loc2):
     else:
         return G[loc1][loc2]
 
-def generate_input():
+#Fills in the adjacency matrix with random float distances in (0, 10)
+#If constant=True, defaults to adjacency matrix of 1
+def generate_input(constant = False):
     poi_count = 10
-    G = [[10*random.random() for i in range(poi_count-k)] for k in range(poi_count-1, -1, -1)]
-    for l in G:
-        print(['{:.2f}'.format(i) for i in l])
-    client_locations = [[0, 1, 2], [3, 4]]
-    return G, client_locations
+    if constant:
+        G = [[1 for i in range(poi_count-k)] for k in range(poi_count-1, -1, -1)]
+    else:
+        G = [[10*random.random() for i in range(poi_count-k)] for k in range(poi_count-1, -1, -1)]
+    for row in G:
+        row[-1] = 0
+    return G
 
-def assign_facilities(G, client_locations, X_rounded):
+def assign_facilities(G: List[List[float]], client_locations, X_rounded):
     Y_reassigned = {}
-    for i in range(len(X_rounded)):
-        if X_rounded[i] == 1:
-            for index in range(len(client_locations)):
-                min_loc = min([(cost(G, loc, i), loc) for loc in client_locations[index]])[1]
-                for loc in client_locations[index]:
-                    if loc == min_loc:
-                        Y_reassigned[address(index, loc, i)] = 1
-                    else:
-                        Y_reassigned[address(index, loc, i)] = 0
-        else:
-            for index in range(len(client_locations)):
-                for loc in client_locations[index]:
-                    Y_reassigned[address(index, loc, i)] = 0
+    
+    open_facilities = [i for i in range(len(X_rounded)) if X_rounded[i] == 1]
+    for index in range(len(client_locations)):
+        possible_assignments = []
+        for loc in client_locations[index]:
+            for fac in open_facilities:
+                Y_reassigned[address(index, loc, fac)] = 0
+                possible_assignments.append((cost(G, loc, fac), loc, fac))
+        
+        min_loc = min(possible_assignments)
+        Y_reassigned[address(index, min_loc[1], min_loc[2])] = 1
     return Y_reassigned
 
+def calculate_objective(G: List[List[float]], X, Y):
+    max_obj_value = 0
+    for key in Y.keys():
+        obj_val = cost(G, key.location, key.facility)*Y[key]
+        if obj_val > max_obj_value:
+            max_obj_value = obj_val
+    return max_obj_value
+
+
 def format_location_output(X_rounded, Y_reassigned):
-    print([i for i in range(len(X_rounded)) if X_rounded[i] == 1])
-    print([address for address in Y_reassigned.keys() if Y_reassigned[address] == 1])
+    print("Facilities Opened: \t" + str([i for i in range(len(X_rounded)) if X_rounded[i] == 1]))
+    print("Client Assignment: \t" + str([address for address in Y_reassigned.keys() if Y_reassigned[address] == 1]))
