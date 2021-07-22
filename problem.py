@@ -1,7 +1,7 @@
 import random
 import numpy as np
 from collections import namedtuple
-from utils import cost
+from utils import *
 
 from typing import Dict, List, Tuple, Set
 from ortools.linear_solver import pywraplp
@@ -12,8 +12,6 @@ from ortools.linear_solver.pywraplp import Variable, Constraint, Objective
 #facility = Node at which a facility can be placed
 #TODO: include more functions to get variables back, etc.
 #TODO: will clean up class structures
-
-address = namedtuple('address', ['index', 'location', 'facility'])
 
 '''
 Data input:
@@ -156,7 +154,6 @@ class MILP(LP):
 '''
 clients is a list of the locations at which clients are located
 '''
-assignment = namedtuple('assignment', ['location', 'facility'])
 
 class K_LP:
     def __init__(self, G:List[List[float]], clients: List[int], k: int, solver_id = "GLOP"):

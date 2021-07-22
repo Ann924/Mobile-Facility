@@ -4,7 +4,7 @@ from problem import *
 from round import *
 from utils import cost, generate_input, assign_facilities
 
-#Possible heuristics: independent rounding, dependent rounding, dispersion (Madhav's version), k-median (w/ houses), high traffic areas
+#Possible heuristics: independent rounding, dependent rounding, dispersion (Madhav's version), k-median/k-center (w/ houses), high traffic areas
 #TODO: test more distances and costs
 
 def independent_LP(G, client_locations, k):
@@ -40,7 +40,7 @@ def k_center(G, clients, k):
     X, Y = my_lp.get_variable_solution()
     
 
-def int_k_center(G, clients, k):
+def integer_k_center(G, clients, k):
     my_lp = integer_K_LP(G, clients, k)
     my_lp.solve_lp()
     X, Y = my_lp.get_variable_solution()
