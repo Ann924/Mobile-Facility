@@ -21,15 +21,15 @@ def test_LP():
     print("------------IND ROUNDING------------------")
     X_ind, Y_ind = independent_LP(G, client_locations, k)
     format_location_output(X_ind, Y_ind)
-    print("Recalculated Objective Value: \t" + str(calculate_objective(G, X_ind, Y_ind)))
+    print("Recalculated Objective Value: \t" + str(calculate_objective(G, Y_ind)))
     print("------------INTEGER LP--------------------")
     X_int, Y_int = integer_LP(G, client_locations, k)
     format_location_output(X_int, Y_int)
-    print("Recalculated Objective Value: \t" + str(calculate_objective(G, X_int, Y_int)))
+    print("Recalculated Objective Value: \t" + str(calculate_objective(G, Y_int)))
     print("------------DEP ROUNDING-----------------")
     X_dep, Y_dep = dependent_LP(G, client_locations, k)
     format_location_output(X_dep, Y_dep)
-    print("Recalculated Objective Value: \t" + str(calculate_objective(G, X_dep, Y_dep)))
+    print("Recalculated Objective Value: \t" + str(calculate_objective(G, Y_dep)))
 
 def test_K():
     k = 10

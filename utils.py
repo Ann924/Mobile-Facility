@@ -29,10 +29,13 @@ def generate_input(constant = False):
     return G
 
 #TODO: If homes are excluded from the problem entirely
-def assign_facilities(G: List[List[float]], client_locations, X_rounded):
+def assign_facilities(G: List[List[float]], client_locations, open_facilities: List[int]):
+    """
+    Input: facilities is a list of open facilities
+    """
     Y_reassigned = {}
     
-    open_facilities = [i for i in range(len(X_rounded)) if X_rounded[i] == 1]
+    #open_facilities = [i for i in range(len(X_rounded)) if X_rounded[i] == 1]
     for index in range(len(client_locations)):
         possible_assignments = []
         for loc in client_locations[index]:
@@ -45,7 +48,10 @@ def assign_facilities(G: List[List[float]], client_locations, X_rounded):
     return Y_reassigned
 
 #TODO: If homes are excluded are excluded from the problem entirely
-def calculate_objective(G: List[List[float]], X, Y, homes_excluded = False):
+def calculate_objective(G: List[List[float]], Y):
+    """
+    Calculates the k-center objective value (maximum distance for any individual) based on the assignment Y
+    """
     max_obj_value = 0
     for key in Y.keys():
         obj_val = cost(G, key.location, key.facility)*Y[key]
@@ -53,7 +59,9 @@ def calculate_objective(G: List[List[float]], X, Y, homes_excluded = False):
             max_obj_value = obj_val
     return max_obj_value
 
-
-def format_location_output(X_rounded, Y_reassigned):
-    print("Facilities Opened: \t" + str([i for i in range(len(X_rounded)) if X_rounded[i] == 1]))
+def format_location_output(facilities: List[int], Y_reassigned):
+    """
+    Input: facilities is a list of open facilities
+    """
+    print("Facilities Opened: \t" + str(facilities))
     print("Client Assignment: \t" + str([address for address in Y_reassigned.keys() if Y_reassigned[address] == 1]))
