@@ -69,11 +69,16 @@ def fpt(G:List[List[int]], client_locations: List[List[int]], k: int):
     #Working on in notebook
     print()
 
-def center_of_centers():
+def center_of_centers(distances: List[List[int]], client_locations: List[List[int]], k: int):
     print()
 
-def center_of_homes(G: List[List[int]], client_locations: List[List[int]], k: int):
-    print()
+def center_of_homes(distances: List[List[int]], client_locations: List[List[int]], k: int):
+    
+    clients = [locs[0] for locs in client_locations]
+    locations = [i for i in range(len(distances)) if i not in clients]
+    
+    return _k_supplier(distances, clients, locations, k)
+    
 
 def _k_supplier(distances: List[List[int]], clients: List[int], locations: List[int], k: int):
     
