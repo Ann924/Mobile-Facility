@@ -89,5 +89,15 @@ def test_function(number_of_points:int, distance_range:Tuple[float, float], numb
     X_fpt, Y_fpt = fpt(G, client_locations, k)
     format_location_output(X_fpt, Y_fpt)
     print("Recalculated Objective Value: \t" + str(calculate_objective(G, Y_fpt)))
+    
+    print("----------Center of Homes----------------")
+    X_home, Y_home = fpt(G, client_locations, k)
+    format_location_output(X_home, Y_home)
+    print("Recalculated Objective Value: \t" + str(calculate_objective(G, Y_home)))
+    
+    print("----------Center of Centers--------------")
+    X_center, Y_center = fpt(G, client_locations, k)
+    format_location_output(X_center, Y_center)
+    print("Recalculated Objective Value: \t" + str(calculate_objective(G, Y_center)))
 
 test_function(5, (1,1), (1,3), (2,4), 2)
