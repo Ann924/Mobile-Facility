@@ -63,21 +63,6 @@ def dependent_LP(G:List[List[float]], client_locations:List[List[int]], k: int):
     
     return facilities, Y_reassigned
 
-def integer_k_center(G:List[List[float]], client_locations: List[List[int]], k: int):
-    """
-    Solve k_center (where each person only has one visited location) with an integer program
-    Reformats client_locations as clients: List[List[int]] to contain the first location in each list
-    """
-    clients = [[visited[0]] for visited in client_locations]
-    
-    my_lp = MILP(G, clients, k)
-    my_lp.solve_lp()
-    X, Y = my_lp.get_variable_solution()
-    
-    facilities = [ind for ind in range(len(X)) if X[ind]==1]
-    
-    return facilities, Y
-
 def fpt(G: List[List[float]], client_locations: List[List[int]], k):
     """
     Presumption: the number of locations visited by clients is bounded by a constant, s
@@ -123,14 +108,41 @@ def fpt(G: List[List[float]], client_locations: List[List[int]], k):
     return min_obj_guess[1], min_obj_guess[2]
 
 def center_of_centers(distances: List[List[float]], client_locations: List[List[int]], k: int):
-    print()
+    
+    clients = []
+    
+    for client in client_locations:
+        
+        dispersion = 1e10
+        effective_center = -1
+        
+        for center in client:
+            
+            max_dist = 0
+            
+            for loc in client:
+                max_dist = max(distances[center][loc], max_dist)
+                
+            if max_dist < dispersion:
+                dispersion = max_dist
+                effective_center = center
+                
+        clients.append(effective_center)
+        
+    homes = [locs[0] for locs in client_locations]
+    locations = [i for i in range(len(distances)) if i not in homes]
+    facilities = _k_supplier(distances, clients, locations, k)
+    
+    return facilities, assign_facilities(G, [locs[:1] for locs in client_locations], facilities)
 
+    
 def center_of_homes(distances: List[List[float]], client_locations: List[List[int]], k: int):
     
-    clients = [locs[0] for locs in client_locations]
-    locations = [i for i in range(len(distances)) if i not in clients]
+    homes = [locs[0] for locs in client_locations]
+    locations = [i for i in range(len(distances)) if i not in homes]
+    facilities = _k_supplier(distances, homes, locations, k)
     
-    return _k_supplier(distances, clients, locations, k)
+    return facilities, assign_facilities(G, [locs[:1] for locs in client_locations], facilities)
     
 
 def _k_supplier(distances: List[List[float]], clients: List[int], locations: List[int], k: int):
