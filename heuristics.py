@@ -3,7 +3,7 @@ import random
 from typing import Dict, List, Tuple, Set
 from problem import *
 from round import *
-from utils import cost, generate_input, assign_facilities
+from utils import *
 
 
 def independent_LP(G:List[List[int]], client_locations:List[List[int]], k: int):
@@ -64,9 +64,90 @@ def integer_k_center(G:List[List[int]], client_locations: List[List[int]], k: in
     
     return facilities, Y
 
-def fpt(G:List[List[int]], client_locations: List[List[int]], k: int):
-    #Working on in notebook
-    print()
+'''def fpt(G: List[List[float]], client_locations: List[List[int]], k):
+    
+    if k==0: return [], {}
+    
+    """
+    Remove homes from the client_location list
+    Perhaps create mapping for the indices of people before exclusion and after?
+    """
+    client_locations_excluded = []
+    for person in client_locations:
+        if len(person)>1:
+            client_locations_excluded.append(person[1:])
+    
+    guesses:List[Tuple[List[int], List[int], int]]
+    guesses = [([loc[0] for loc in client_locations_excluded], [0 for i in range(len(client_locations_excluded))], 0)]
+
+    covered_set = set()
+    min_obj_guess: Tuple[int, List[int], Dict[Tuple[int, int, int]:int]] = (math.inf, [], {})
+    
+    while len(guesses)>0:
+        guess, indexing, person = guesses.pop(0)
+
+        """
+        Locate facilities based on guess
+        Reformat input to work for k-supplier
+        """
+        locations = list(set(k for i in client_locations_excluded for k in i))
+        facilities = _k_supplier(G, list(set(guess)), locations, k)
+        Y = assign_facilities(G, client_locations_excluded, facilities)
+        obj_value = calculate_objective(G, Y)
+        print(guess, obj_value)
+        if obj_value < min_obj_guess[0]:
+            min_obj_guess = (obj_value, facilities, Y)
+        
+        """
+        Add more guess combinations by swapping out locations
+        """
+        for ind in range(person, len(indexing)):
+            current_loc_ind = indexing[ind]
+            
+            if current_loc_ind+1 < len(client_locations_excluded[ind]):
+                new_indexing = indexing[:ind] + [current_loc_ind+1] + indexing[ind+1:]
+                new_guess = [locations[new_indexing[i]] for i, locations in enumerate(client_locations_excluded)]
+                if frozenset(new_guess) not in covered_set:
+                    guesses.append((new_guess, new_indexing, ind))
+                    covered_set.add(frozenset(new_guess))
+    
+    return min_obj_guess[1], min_obj_guess[2]'''
+
+def fpt(G: List[List[float]], client_locations: List[List[int]], k):
+    """
+    Remove homes from the client_location list
+    Perhaps create mapping for the indices of people before exclusion and after?
+    """
+    client_locations_excluded = []
+    for person in client_locations:
+        if len(person)>1:
+            client_locations_excluded.append(person[1:])
+    
+    guesses:List[Tuple[List[int], List[int], int]]
+    guesses = [([loc[0] for loc in client_locations_excluded], [0 for i in range(len(client_locations_excluded))], 0)]
+
+    covered_set = set()
+    min_obj_guess: Tuple[int, List[int], Dict[Tuple[int, int, int]:int]] = (math.inf, [], {})
+    
+    locations = set(loc for clients in client_locations_excluded for loc in clients)
+    combos = powerset(list(locations))
+    
+    done_looping = False
+    while not done_looping:
+        try:
+            guess = next(combos)
+            print(guess)
+        except StopIteration:
+            done_looping = True
+        else:
+            if len(guess) > 0:
+                facilities = _k_supplier(G, list(set(guess)), locations, k)
+                Y = assign_facilities(G, client_locations_excluded, facilities)
+                obj_value = calculate_objective(G, Y)
+                if obj_value < min_obj_guess[0]:
+                    min_obj_guess = (obj_value, facilities, Y)
+    
+    return min_obj_guess[1], min_obj_guess[2]
 
 def center_of_centers():
     print()
@@ -91,18 +172,19 @@ def _k_supplier(distances: List[List[int]], clients: List[int], locations: List[
   
         mid = l + (r - l) // 2;
         
-        pairwise_disjoint =  _check_radius(possible_OPT[mid], distances, clients, locations, k)
-        if len(pairwise_disjoint) <= k:
+        if len(_check_radius(possible_OPT[mid], distances, clients, locations, k)) <= k:
             r = mid - 1
             to_ret = mid
         else:
             l = mid + 1
         
     if to_ret >= 0:
-        facilities = _locate_facilities(possible_OPT[to_ret], distances, pairwise_disjoint, locations, k)
+        facilities = _locate_facilities(possible_OPT[to_ret], distances,
+                                        _check_radius(possible_OPT[mid], distances, clients, locations, k), locations, k)
         return facilities
     else:
-        print("NO SOLUTION")
+        #print("NO SOLUTION")
+        return []
 
 def _check_radius(radius: int, distances: List[List[int]], clients: List[int], locations: List[int], k: int):
     
@@ -138,4 +220,5 @@ def _locate_facilities(radius: int, distances: List[List[int]], pairwise_disjoin
         unopened_facilities = set(locations)-facilities
         for i in range(k-len(facilities)):
             facilities.add(unopened_facilities.pop())
+    
     return list(facilities)

@@ -43,5 +43,12 @@ def test_K():
     X_home, Y_home = center_of_homes(G, client_locations, k)
     format_location_output(X_home, Y_home)
 
-test_LP()
+def test_case_line():
+    G = [[0], [5, 0], [12, 7, 0]]
+    clients = [0, 2]
+    locations = [1]
+    k = 1
+    
+    
+#test_LP()
 #test_K()
