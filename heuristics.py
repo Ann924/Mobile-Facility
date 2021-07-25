@@ -49,27 +49,12 @@ def dependent_LP(G:List[List[int]], client_locations:List[List[int]], k: int):
     
     return facilities, Y_reassigned
 
-def integer_k_center(G:List[List[int]], client_locations: List[List[int]], k: int):
-    """
-    Solve k_center (where each person only has one visited location) with an integer program
-    Reformats client_locations as clients: List[List[int]] to contain the first location in each list
-    """
-    clients = [[visited[0]] for visited in client_locations]
-
-    
-    my_lp = MILP(G, clients, k)
-    my_lp.solve_lp()
-    X, Y = my_lp.get_variable_solution()
-    
-    facilities = [ind for ind in range(len(X)) if X[ind]==1]
-    
-    return facilities, Y
-
 def fpt(G:List[List[int]], client_locations: List[List[int]], k: int):
     #Working on in notebook
     print()
 
 def center_of_centers(distances: List[List[int]], client_locations: List[List[int]], k: int):
+    
     print()
 
 def center_of_homes(distances: List[List[int]], client_locations: List[List[int]], k: int):
