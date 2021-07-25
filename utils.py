@@ -3,8 +3,9 @@ import random
 from collections import namedtuple
 from itertools import chain, combinations
 
+# TODO: Change Y structure (from indicator variables to direct mapping)
+
 address = namedtuple('address', ['index', 'location', 'facility'])
-assignment = namedtuple('assignment', ['location', 'facility'])
 
 def powerset(iterable):
     "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
@@ -13,35 +14,54 @@ def powerset(iterable):
 
 def cost(G: List[List[float]], loc1, loc2):
     """
+    Input:
+        G is a diagonal 2D matrix, filled from the bottom left corner
+        ex:  Three points in a line, each a distance of 1 from one another
+             G = [[0],
+                 [1, 0],
+                 [2, 1, 0]]                                             
+    
+    Given two locations, returns the distance (or the cost) between them
     """
+    
     if loc1==loc2: return 0
     elif loc1 < loc2:
         return G[loc2][loc1]
     else:
         return G[loc1][loc2]
 
-def generate_input(constant = False):
+def generate_input(number_of_points:int, distance_range: Tuple[float, float]) -> List[List[float]]:
     """
-    Fills in the adjacency matrix with random float distances in (0, 10)
-    If constant=True, defaults to adjacency matrix of 1
+    number_of_points > 0
+    distance_range --> [lower-bound, upper-bound]
+    
+    Creates and fills in the adjacency matrix (G) of parametrized number of locations with random float distances in inputted range
     """
-    poi_count = 10
-    if constant:
-        G = [[1 for i in range(poi_count-k)] for k in range(poi_count-1, -1, -1)]
-    else:
-        G = [[10*random.random() for i in range(poi_count-k)] for k in range(poi_count-1, -1, -1)]
+    
+    poi_count = number_of_points
+    G = [[(distance_range[1]-distance_range[0])*random.random()+distance_range[0]
+          for i in range(poi_count-k)] for k in range(poi_count-1, -1, -1)]
+    
     for row in G:
         row[-1] = 0
+    
     return G
 
-#TODO: If homes are excluded from the problem entirely
-def assign_facilities(G: List[List[float]], client_locations, open_facilities: List[int]):
+# TODO: What if homes are excluded from the problem entirely
+# TODO: Change format of Y
+def assign_facilities(G: List[List[float]], client_locations: List[List[int]], open_facilities: List[int]):
     """
-    Input: facilities is a list of open facilities
-    """
-    Y_reassigned = {}
+    Input:
+        G --> diagonal adjacency matrix for location distances
+        client_locations --> clients represented by index, contains a list of locations visited by each indexed client
+        open_facilities --> list of facilities that are open
     
-    #open_facilities = [i for i in range(len(X_rounded)) if X_rounded[i] == 1]
+    Assigns clients to their nearest facility from one of their visited locations.
+    """
+    
+    #Maps address to indicator variable of optimal assignment
+    Y_reassigned: Dict[Tuple[int, int, int]: int] = {}
+    
     for index in range(len(client_locations)):
         possible_assignments = []
         for loc in client_locations[index]:
@@ -51,10 +71,11 @@ def assign_facilities(G: List[List[float]], client_locations, open_facilities: L
         
         min_loc = min(possible_assignments)
         Y_reassigned[address(index, min_loc[1], min_loc[2])] = 1
+    
     return Y_reassigned
 
 #TODO: If homes are excluded are excluded from the problem entirely
-def calculate_objective(G: List[List[float]], Y):
+def calculate_objective(G: List[List[float]], Y: Dict[Tuple[int, int, int], int]) -> float:
     """
     Calculates the k-center objective value (maximum distance for any individual) based on the assignment Y
     """
@@ -65,9 +86,9 @@ def calculate_objective(G: List[List[float]], Y):
             max_obj_value = obj_val
     return max_obj_value
 
-def format_location_output(facilities: List[int], Y_reassigned):
+def format_location_output(facilities: List[int], Y_reassigned: Dict[Tuple[int, int, int], int]):
     """
-    Input: facilities is a list of open facilities
+    Prints out the opened facilities and the assignments corresponding to those facilities
     """
     print("Facilities Opened: \t" + str(facilities))
     print("Client Assignment: \t" + str([address for address in Y_reassigned.keys() if Y_reassigned[address] == 1]))

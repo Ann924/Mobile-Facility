@@ -1,8 +1,6 @@
 import networkx as nx
 import random
-from problem import *
 from heuristics import *
-from round import *
 from utils import *
 
 #Possible heuristics: independent rounding, dependent rounding, dispersion (Madhav's version), k-median (w/ houses), high traffic areas
@@ -43,7 +41,19 @@ def test_K():
     X_home, Y_home = center_of_homes(G, client_locations, k)
     format_location_output(X_home, Y_home)
 
-def test_case_line():
+def test_line(number_of_points:int, distance_range:Tuple[float, float]):
+    """
+    number_of_points > 0
+    """
+    G = []
+    for k in range(number_of_points-1, -1, -1):
+        G.append([])
+        for i in range(number_of_points-k-1):
+            G[-1].append((distance_range[1]-distance_range[0])*random.random() + distance_range[0])
+        G[-1].append(0)
+    
+    #G = [[(distance_range[1]-distance_range[0])*random.random()+distance_range[0] for i in range(number_of_points-k)] for k in range(number_of_points-1, -1, -1)]
+    
     G = [[0], [5, 0], [12, 7, 0]]
     clients = [0, 2]
     locations = [1]
