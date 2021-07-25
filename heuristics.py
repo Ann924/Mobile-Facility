@@ -116,7 +116,6 @@ def fpt(G: List[List[float]], client_locations: List[List[int]], k):
     while not done_looping:
         try:
             guess = next(combos)
-            print(guess)
         except StopIteration:
             done_looping = True
         else:

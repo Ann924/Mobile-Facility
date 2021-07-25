@@ -18,8 +18,8 @@ def cost(G: List[List[float]], loc1, loc2):
         G is a diagonal 2D matrix, filled from the bottom left corner
         ex:  Three points in a line, each a distance of 1 from one another
              G = [[0],
-                 [1, 0],
-                 [2, 1, 0]]                                             
+                  [1, 0],
+                  [2, 1, 0]]                                             
     
     Given two locations, returns the distance (or the cost) between them
     """
