@@ -46,9 +46,7 @@ def integer_LP(G:List[List[float]], client_locations:List[List[int]], k: int):
 
 def dependent_LP(G:List[List[float]], client_locations:List[List[int]], k: int):
     """
-    Solves the relaxed linear program for multiple client locations
-    Uses dependent rounding on X, the indicator variable for facilities opened
-    Reassigns Y (the assignment of each individual from one of their visited locations to a facility) based on the rounded X
+    Solves the relaxed linear program for multiple client locations and uses dependent rounding on X
     
     Returns:
         facilities --> list of facilities opened
@@ -88,30 +86,26 @@ def fpt(G: List[List[float]], client_locations: List[List[int]], k):
     Run k-supplier on each set and select the guess and its open facilities with the smallest objective value
     """
     
-    '''
-    Remove homes from the client_location list
-    Clients that only have a home location will not be considered in this algorithm
-    '''
+    #Remove homes from the client_location list
+    #Clients that only have a home location will not be considered in this algorithm
     #TODO: Perhaps create mapping for the indices of people before exclusion and after?
     client_locations_excluded = []
     for person in client_locations:
         if len(person)>1:
             client_locations_excluded.append(person[1:])
     
-    '''
-    Create list of visited locations (bounded by a constant size s)
-    Generate possible sets of locations covered by facilities
-    '''
+    
+    #Create list of visited locations (bounded by a constant size s)
+    #Generate possible sets of locations covered by facilities
     locations = set(loc for clients in client_locations_excluded for loc in clients)
     combos = powerset(list(locations))
     
     #store the guess and its corresponding set of opened facilities that performs the best
     min_obj_guess: Tuple[int, List[int], Dict[Tuple[int, int, int]:int]] = (math.inf, [], {})
     
-    '''
-    Iterate through possible combinations and run k_supplier approximation algorithm, selecting
-    the guess and resulting facility set that yields the smallest objective value
-    '''
+    
+    #Iterate through possible combinations and run k_supplier approximation algorithm, selecting
+    #the guess and resulting facility set that yields the smallest objective value
     done_looping = False
     while not done_looping:
         try:
@@ -141,7 +135,7 @@ def center_of_homes(distances: List[List[float]], client_locations: List[List[in
 
 def _k_supplier(distances: List[List[float]], clients: List[int], locations: List[int], k: int):
     """
-    Solves k-supplier (where client locations and facility locations may not overlap) with Gonzalez's
+    Solves k-supplier (where client locations and facility locations may not overlap) with hochbaum-shmoys
     3-approximation algorithm
     """
     

@@ -11,7 +11,9 @@ from ortools.linear_solver.pywraplp import Variable, Constraint, Objective
 #location = Node representing location visited by that individual
 #facility = Node at which a facility can be placed
 
-#TODO: will clean up class structures
+# TODO: will clean up class structures
+# TODO: allow variables to be set and then rerun
+
 '''
 Data input:
 1) Matrix of distances (half-filled)
