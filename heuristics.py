@@ -42,6 +42,7 @@ def center_of_centers():
 def center_of_homes(G, client_locations: List[List[int]], k):
     #reformat input of client_locations to contain only the home location (as a list with a single element)
     clients = [[visited[0]] for visited in client_locations]
+
     
     #use integer program
     my_lp = MILP(G, clients, k)
