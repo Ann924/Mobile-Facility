@@ -33,11 +33,11 @@ class LP:
         self.init_constraints()
         self.init_objective()
     
-    '''
-    X is the indicator variable for whether a facility is open
-    Y is the indicator variable to assign an individual from one of the travelled locations to the nearest facility
-    '''
     def init_variables(self):
+        """
+        X is the indicator variable for whether a facility is open
+        Y is the indicator variable to assign an individual from one of the travelled locations to the nearest facility
+        """
         #Set indicator variables for indicating whether a facility is open
         self.X: Dict[int, Variable] = {}
         for node in range(len(self.G)):
@@ -55,15 +55,14 @@ class LP:
         
         #print('Number of variables =', self.solver.NumVariables())
 
-    #TODO: Add constraint to avoid opening a facility at a house location?
     def init_constraints(self):
-        
         #Setting the constraint for the number of open facilities
         self.budget = self.solver.Constraint(0, self.k, 'budget')
         for ind in self.X.keys():
             self.budget.SetCoefficient(self.X[ind], 1)
         
-        '''#Setting the constraint for no open facilities at homes
+        #Setting the constraint for no open facilities at homes
+        '''
         self.home = self.solver.Constraint(0, 0, 'home')
         for location_list in self.client_locations:
             self.home.SetCoefficient(self.X[location_list[0]], 1)'''
@@ -83,9 +82,10 @@ class LP:
         
         #print('Number of constraints =', self.solver.NumConstraints())
     
-    #K-center objective to minimize the maximum distance
     def init_objective(self):
-        
+        """
+        k-center objective to minimize the maximum distance any client travels
+        """
         self.objective = self.solver.Objective()
         self.objective.SetCoefficient(self.w, 1)
         self.objective.SetMinimization()
@@ -96,16 +96,6 @@ class LP:
         
         if self.status == pywraplp.Solver.OPTIMAL:
             print('Objective value =', self.objective.Value())
-
-            '''print("X VALUES")
-            for ind in range(len(self.X)):
-                if self.X[ind].solution_value()>0:
-                    print(str(ind) + "\t" + str(self.X[ind].solution_value()))
-
-            print("Y VALUES")
-            for address in self.Y.keys():
-                if self.Y[address].solution_value()>0:
-                    print(str(address) + "\t" + str(self.Y[address].solution_value()))'''
 
             #print('Problem solved in %f milliseconds' % self.solver.wall_time())
             #print('Problem solved in %d iterations' % self.solver.iterations())
@@ -130,10 +120,6 @@ class MILP(LP):
     def __init__(self, G:List[List[float]], client_locations: List[List[int]], k: int, solver_id = 'SCIP'):
         super().__init__(G, client_locations, k, solver_id)
     
-    '''
-    X is the indicator variable for whether a facility is open
-    Y is the indicator variable to assign an individual from one of the travelled locations to the nearest facility
-    '''
     def init_variables(self):
         #Set indicator variables for indicating whether a facility is open
         self.X: Dict[int, Variable] = {}

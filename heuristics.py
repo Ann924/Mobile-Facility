@@ -8,15 +8,8 @@ from utils import *
 # TODO: standardize input structure (especially client_locations)
 
 def independent_LP(G:List[List[float]], client_locations:List[List[int]], k: int):
-    """
-    Solves the relaxed k-center linear program for multiple client locations
-    Independently rounds on X, the indicator variables for which facilities are opened
+    """Solves the relaxed k-center linear program for multiple client locations and independently rounds on X"""
     
-    Returns:
-        facilities --> list of facilities opened
-        Y_reassigned --> dictionary mapping address(client index, client location, facility) to an indicator
-        for the optimality of the assignment given facilities
-    """
     my_lp = LP(G, client_locations, k)
     my_lp.solve_lp()
     X, Y = my_lp.get_variable_solution()
@@ -28,14 +21,8 @@ def independent_LP(G:List[List[float]], client_locations:List[List[int]], k: int
     return facilities, Y_reassigned
 
 def integer_LP(G:List[List[float]], client_locations:List[List[int]], k: int):
-    """
-    Solves the integer linear program for multiple client locations
+    """Solves the integer linear program for multiple client locations"""
     
-    Returns:
-        facilities --> list of facilities opened
-        Y --> dictionary mapping address(client index, client location, facility) to an indicator
-        for the optimality of the assignment given facilities
-    """
     my_lp = MILP(G, client_locations, k)
     my_lp.solve_lp()
     X, Y = my_lp.get_variable_solution()
@@ -45,14 +32,8 @@ def integer_LP(G:List[List[float]], client_locations:List[List[int]], k: int):
     return facilities, Y
 
 def dependent_LP(G:List[List[float]], client_locations:List[List[int]], k: int):
-    """
-    Solves the relaxed linear program for multiple client locations and uses dependent rounding on X
+    """Solves the relaxed linear program for multiple client locations and uses dependent rounding on X"""
     
-    Returns:
-        facilities --> list of facilities opened
-        Y_reassigned --> dictionary mapping address(client index, client location, facility) to an indicator
-        for the optimality of the assignment given facilities
-    """
     my_lp = LP(G, client_locations, k)
     my_lp.solve_lp()
     X, Y = my_lp.get_variable_solution()
@@ -65,45 +46,28 @@ def dependent_LP(G:List[List[float]], client_locations:List[List[int]], k: int):
 
 def fpt(G: List[List[float]], client_locations: List[List[int]], k):
     """
-    Presumption: the number of locations visited by clients is bounded by a constant, s
-    
-    Generate all combination sets of locations that will be covered by facilities.
-    Run k-supplier on each set and select the guess and its open facilities with the smallest objective value
+    The number of locations visited by clients is bounded by a constant
+    Run k-supplier on all combination sets of locations that will be covered by facilitie and select the guess and its open facilities with the smallest objective value
     """
     
-    #Remove homes from the client_location list
-    #Clients that only have a home location will not be considered in this algorithm
+    #Remove homes from the client_location lists
     #TODO: Perhaps create mapping for the indices of people before exclusion and after?
-    client_locations_excluded = []
-    for person in client_locations:
-        if len(person)>1:
-            client_locations_excluded.append(person[1:])
+    client_locations_excluded = [person[1:] for person in client_locations if len(person)>1]
     
-    
-    #Create list of visited locations (bounded by a constant size s)
-    #Generate possible sets of locations covered by facilities
+    #Select the guess and resulting facilities that yield the smallest objective value with k-supplier
     locations = set(loc for clients in client_locations_excluded for loc in clients)
-    combos = powerset(list(locations))
-    
-    #store the guess and its corresponding set of opened facilities that performs the best
     min_obj_guess: Tuple[int, List[int], Dict[Tuple[int, int, int]:int]] = (math.inf, [], {})
     
-    
-    #Iterate through possible combinations and run k_supplier approximation algorithm, selecting
-    #the guess and resulting facility set that yields the smallest objective value
-    done_looping = False
-    while not done_looping:
-        try:
-            guess = next(combos)
-        except StopIteration:
-            done_looping = True
-        else:
-            if len(guess) > 0:
-                facilities = _k_supplier(G, list(set(guess)), locations, k)
-                Y = assign_facilities(G, client_locations_excluded, facilities)
-                obj_value = calculate_objective(G, Y)
-                if obj_value < min_obj_guess[0]:
-                    min_obj_guess = (obj_value, facilities, Y)
+    for guess in powerset(list(locations)):
+        
+        if len(guess)==0: continue
+        
+        facilities = _k_supplier(G, list(set(guess)), locations, k)
+        Y = assign_facilities(G, client_locations_excluded, facilities)
+        obj_value = calculate_objective(G, Y)
+        
+        if obj_value < min_obj_guess[0]:
+            min_obj_guess = (obj_value, facilities, Y)
     
     return min_obj_guess[1], min_obj_guess[2]
 
@@ -137,6 +101,7 @@ def center_of_centers(distances: List[List[float]], client_locations: List[List[
 
     
 def center_of_homes(distances: List[List[float]], client_locations: List[List[int]], k: int):
+    """Opens facilities based only on home-locations"""
     
     homes = [locs[0] for locs in client_locations]
     locations = [i for i in range(len(distances)) if i not in homes]
@@ -147,7 +112,7 @@ def center_of_homes(distances: List[List[float]], client_locations: List[List[in
 
 def _k_supplier(distances: List[List[float]], clients: List[int], locations: List[int], k: int):
     """
-    Solves k-supplier (where client locations and facility locations may not overlap) with hochbaum-shmoys
+    Solves k-supplier (where client locations and facility locations may not overlap) with Hochbaum-Shmoys
     3-approximation algorithm
     """
     
@@ -182,10 +147,7 @@ def _k_supplier(distances: List[List[float]], clients: List[int], locations: Lis
         return []
 
 def _check_radius(radius: int, distances: List[List[float]], clients: List[int]):
-    """
-    Create balls around each client with the given radius
-    Determine the maximal independent set of pairiwse independent client balls
-    """
+    """Determine the maximal independent set of pairiwse independent client balls with given radius"""
     
     pairwise_disjoint = set()
     
@@ -203,10 +165,7 @@ def _check_radius(radius: int, distances: List[List[float]], clients: List[int])
 
 
 def _locate_facilities(radius: int, distances: List[List[float]], pairwise_disjoint: Set[int], locations: List[int], k: int):
-    """
-    Select a facility to open within the given radius for each pairwise_disjoint client
-    Randomly select more facilities to open if the budget for facilities is greater than the number of pairwise disjoint client balls
-    """
+    """Select a facility to open within the given radius for each pairwise_disjoint client"""
     
     facilities = set()
     for c in pairwise_disjoint:
