@@ -59,11 +59,13 @@ def assign_facilities(G: List[List[float]], client_locations: List[List[int]], f
         assignments
             lists (visited location, facility) assignment for each client
     """
+    if len(facilities) == 0: return []
     
     assignments: List[Tuple[int, int]] = []
     
     for index in range(len(client_locations)):
         possible_assignments = [(cost(G, loc, fac), loc, fac) for loc in client_locations[index] for fac in facilities]
+        
         min_loc = min(possible_assignments)
         assignments.append((min_loc[1], min_loc[2]))
    
@@ -74,6 +76,8 @@ def calculate_objective(G: List[List[float]], assignments: List[Tuple[int, int]]
     """
     Calculates the maximum distance for any individual based on the assignments
     """
+    if len(assignments) == 0: return 0
+    
     obj_val = [cost(G, loc, fac) for loc,fac in assignments]
     return max(obj_val)
 
