@@ -89,6 +89,10 @@ class LP:
         self.objective = self.solver.Objective()
         self.objective.SetCoefficient(self.w, 1)
         self.objective.SetMinimization()
+    
+    #Not tested
+    def set_variable(self, facility, value):
+        self.solver.Add(self.X[facility] == value)
 
     def solve_lp(self):
         
