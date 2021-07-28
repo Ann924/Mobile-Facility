@@ -1,0 +1,15 @@
+name: facility
+channels:
+    - defaults
+dependencies:
+    - numpy
+    - matplotlib
+    - pandas
+    - pytest
+    - scipy
+    - seaborn
+    - pip
+    - jupyter
+    - pip:
+          - EoN
+          - ortools
