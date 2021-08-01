@@ -21,16 +21,34 @@ def independent_LP(k: int):
     assignments : List[Tuple[int, int]]
         visited location and facility assignment indexed by each client
     """
+    potential_facility_locations = set(LOCATION_ASSIGNMENTS.iloc[range(30)].lid)
+    #potential_facility_locations = set(LOCATION_ASSIGNMENTS.iloc[:10].index)
     
+    client_locations = []
+    for person in CLIENT_LOCATIONS.lid:
+        new_list = [p for p in person if p in potential_facility_locations]
+        if len(new_list)>0:
+            client_locations.append(new_list)
+    
+    print(len(potential_facility_locations))
+    print(len(client_locations))
+    
+    #potential_facility_locations = list(potential_facility_locations)
     #Solves the relaxed k-center linear program for multiple client locations
-    my_lp = LP(k)
+    my_lp = LP(list(potential_facility_locations), client_locations, k)
     my_lp.solve_lp()
-    X, Y = my_lp.get_variable_solution()
+    X, Y = my_lp.get_variable_solution
+    
+    X_index_map = {}
+    X_list = []
+    for i, k in enumerate(X.keys()):
+        X_map[i] = k
+        X_list.append(X[k])
     
     #Independently rounds on X, then reassigns Y according to X
-    X_rounded = [1 if random.random()<= x else 0 for x in X]
-    facilities = [ind for ind in range(len(X_rounded)) if X_rounded[ind]==1]
-    assignments = assign_facilities(facilities)
+    X_rounded = [1 if random.random()<= x else 0 for x in X_list]
+    facilities = [X_index_map[ind] for ind in range(len(X_rounded)) if X_rounded[ind]==1]
+    assignments = assign_facilities(client_locations, facilities)
     
     return facilities, assignments
 
@@ -48,13 +66,25 @@ def integer_LP(k: int):
     assignments : List[Tuple[int, int]]
         visited location and facility assignment indexed by each client
     """
+    potential_facility_locations = set(LOCATION_ASSIGNMENTS.iloc[range(30)].lid)
+    #potential_facility_locations = set(LOCATION_ASSIGNMENTS.iloc[:10].index)
+    
+    client_locations = []
+    for person in CLIENT_LOCATIONS.lid:
+        #new_list = list(set(person).intersection(potential_facility_locations))
+        new_list = [p for p in person if p in potential_facility_locations]
+        if len(new_list)>0:
+            client_locations.append(new_list)
+    
+    print(len(potential_facility_locations))
+    print(len(client_locations))
     
     #Solves the integer linear program for multiple client locations
     my_lp = MILP(k)
     my_lp.solve_lp()
     X, Y = my_lp.get_variable_solution()
-    
-    facilities: List[int] = [ind for ind in range(len(X)) if X[ind]==1]
+
+    facilities: List[int] = [ind for ind in X.keys() if X[ind]==1]
     assignments: List[Tuple[int, int]] = [() for i in range(len(CLIENT_LOCATIONS))]
     for address, indicator in Y.items():
         if indicator == 1:
@@ -76,15 +106,30 @@ def dependent_LP(k: int):
     assignments : List[Tuple[int, int]]
         visited location and facility assignment indexed by each client
     """
+    potential_facility_locations = set(LOCATION_ASSIGNMENTS.iloc[range(30)].lid)
+    #potential_facility_locations = set(LOCATION_ASSIGNMENTS.iloc[:10].index)
+    
+    client_locations = []
+    for person in CLIENT_LOCATIONS.lid:
+        #new_list = list(set(person).intersection(potential_facility_locations))
+        new_list = [p for p in person if p in potential_facility_locations]
+        if len(new_list)>0:
+            client_locations.append(new_list)
     
     #Solves the relaxed linear program for multiple client locations and uses dependent rounding on X
-    my_lp = LP(k)
+    my_lp = LP(list(potential_facility_locations), client_locations, k)
     my_lp.solve_lp()
     X, Y = my_lp.get_variable_solution()
     
-    X_rounded = D_prime(np.array(X))
-    facilities = [ind for ind in range(len(X_rounded)) if X_rounded[ind]==1]
-    assignments = assign_facilities(facilities)
+    X_index_map = {}
+    X_list = []
+    for i, k in enumerate(X.keys()):
+        X_map[i] = k
+        X_list.append(X[k])
+    
+    X_rounded = D_prime(np.array(X_list))
+    facilities = [X_index_map[ind] for ind in range(len(X_rounded)) if X_rounded[ind]==1]
+    assignments = assign_facilities(client_locations, facilities)
     
     return facilities, assignments
 
@@ -106,15 +151,17 @@ def fpt(k: int, s: int):
         visited location and facility assignment indexed by each client
     """
     potential_facility_locations = set(LOCATION_ASSIGNMENTS.iloc[range(s)].lid)
+    #potential_facility_locations = set(LOCATION_ASSIGNMENTS.iloc[:10].index)
     
     #Remove homes from the client_location lists
     #TODO: Perhaps create mapping for the indices of people before exclusion and after?
     client_locations_excluded = []
     for person in CLIENT_LOCATIONS.lid:
-        new_list = list(set(person[1:]).intersection(potential_facility_locations))
+        new_list = [p for p in person[1:] if p in potential_facility_locations]
         if len(new_list)>0:
             client_locations_excluded.append(new_list)
-    
+            
+    print(len(potential_facility_locations), len(client_locations_excluded))
     #Select the guess and resulting facilities that yield the smallest objective value with k-supplier
     min_obj_guess: Tuple[int, List[int], Dict[Tuple[int, int, int]:int]] = (math.inf, [], {})
     
@@ -123,7 +170,6 @@ def fpt(k: int, s: int):
         if len(guess)==0: continue
         
         facilities = _k_supplier(list(set(guess)), list(potential_facility_locations), k)
-        #print(facilities)
         assignments = assign_facilities(client_locations_excluded, facilities)
         obj_value = calculate_objective(assignments)
         
@@ -132,15 +178,11 @@ def fpt(k: int, s: int):
     
     return min_obj_guess[1], min_obj_guess[2]
 
-#NOT CONVERTED INTO CORRECT FORMAT
-def center_of_centers(distances: List[List[float]], client_locations: List[List[int]], k: int):
+#NOT TESTED
+def center_of_centers(k: int):
     """
     PARAMETERS
     ----------
-    distances : List[List[float]]
-        diagonally-filled adjacency matrix for distances between locations
-    client_locations : List[List[int]]
-        list of visited locations for each client
     k : int
         number of facilities to be opened
     
@@ -153,7 +195,7 @@ def center_of_centers(distances: List[List[float]], client_locations: List[List[
     """
     clients = []
     
-    for client in client_locations:
+    for client in CLIENT_LOCATIONS.lid:
         
         dispersion = 1e10
         effective_center = -1
@@ -163,7 +205,7 @@ def center_of_centers(distances: List[List[float]], client_locations: List[List[
             max_dist = 0
             
             for loc in client:
-                max_dist = max(cost(distances, center, loc), max_dist)
+                max_dist = max(calculate_distance(center, loc), max_dist)
                 
             if max_dist < dispersion:
                 dispersion = max_dist
@@ -171,23 +213,20 @@ def center_of_centers(distances: List[List[float]], client_locations: List[List[
                 
         clients.append(effective_center)
         
-    homes = [locs[0] for locs in client_locations]
-    locations = [i for i in range(len(distances)) if i not in homes]
-    facilities = _k_supplier(distances, clients, locations, k)
+    homes = [locs[0] for locs in CLIENT_LOCATIONS.lid]
+    locations = [i for i in range(len(LOCATIONS)) if i not in homes]
+    facilities = _k_supplier(clients, locations, k)
+    print(len(facilities))
     
-    return facilities, assign_facilities(distances, [locs[:1] for locs in client_locations], facilities)
+    return facilities, assign_facilities([locs[:1] for locs in CLIENT_LOCATIONS.lid], facilities)
 
-#NOT CONVERTED INTO CORRECT FORMAT
-def center_of_homes(distances: List[List[float]], client_locations: List[List[int]], k: int):
+#NOT TESTED
+def center_of_homes(k: int):
     """
     Opens facilities based only on home-locations
     
     PARAMETERS
     ----------
-    distances : List[List[float]]
-        diagonally-filled adjacency matrix for distances between locations
-    client_locations : List[List[int]]
-        list of visited locations for each client
     k : int
         number of facilities to be opened
     
@@ -198,15 +237,22 @@ def center_of_homes(distances: List[List[float]], client_locations: List[List[in
     assignments : List[Tuple[int, int]]
         visited location and facility assignment indexed by each client
     """
+    potential_facility_locations = set(LOCATION_ASSIGNMENTS.iloc[range(20)].lid)
+    print(potential_facility_locations)
     
-    homes = [locs[0] for locs in client_locations]
-    locations = [i for i in range(len(distances)) if i not in homes]
-    facilities = _k_supplier(distances, homes, locations, k)
+    homes = set(locs[0] for locs in CLIENT_LOCATIONS.lid)
+
+    locations = [i for i in potential_facility_locations if i not in homes]
+    facilities = _k_supplier(list(homes), locations, k)
+    print(len(facilities))
     
-    return facilities, assign_facilities(distances, [locs[:1] for locs in client_locations], facilities)
+    return facilities, assign_facilities([locs[:1] for locs in CLIENT_LOCATIONS.lid], facilities)
     
 
 def _possible_distances(clients:List[int], locations: List[int]):
+    """
+    Calculates distance between clients and between clients and facilities
+    """
     distances = set()
     for ind in range(len(clients)):
         for l in range(len(locations)):
