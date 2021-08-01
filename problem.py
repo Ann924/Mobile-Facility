@@ -22,19 +22,11 @@ Data input:
 '''
 
 class LP:
-    def __init__(self, k: int, solver_id = "GLOP"):
+    def __init__(self, facility_locations: List[int], client_locations: List[List[int]], k: int, solver_id = "GLOP"):
         
         #Set up client locations and possible facility locations
-        potential_facility_locations = set(LOCATION_ASSIGNMENTS.iloc[range(500)].lid)
-        
-        client_locations = []
-        for person in CLIENT_LOCATIONS.lid:
-            new_list = list(set(person).intersection(potential_facility_locations))
-            if len(new_list)>0:
-                client_locations.append(new_list)
-        
+        self.facility_locations = facility_locations
         self.client_locations = client_locations
-        self.facility_locations = list(potential_facility_locations)
         
         self.k = k
         
@@ -51,16 +43,22 @@ class LP:
         """
         #Set indicator variables for indicating whether a facility is open
         self.X: Dict[int, Variable] = {}
-        for node in range(len(self.facility_locations)):
+        for node in self.facility_locations:
             self.X[node] = self.solver.NumVar(0, 1, f"x_{node}")
         
         #Set indicator variables for indicating an individual's assignment to a location and facility
         self.Y: Dict[Tuple[int, int, int], Variable] = {}
+        self.Y_ind_address: Dict[int, List[Tuple[int, int, int]]] = {}
+        #self.Y: Dict[int, Dict[Tuple[int, int], Variable]] = {}
         for ind in range(len(self.client_locations)):
+            self.Y_ind_address[ind] = []
             for loc in self.client_locations[ind]:
                 #Will not assign a client from a visited location to facility that is another visited location
-                for node in set(self.facility_locations) - (set(self.client_locations[ind])-{loc}):
+                for node in self.facility_locations:
                     self.Y[address(ind, loc, node)] = self.solver.NumVar(0, 1, f"y_{ind, loc, node}")
+                    self.Y_ind_address[ind].append(address(ind, loc, node))
+                #for node in set(self.facility_locations) - (set(self.client_locations[ind])-{loc}):
+                #    self.Y[address(ind, loc, node)] = self.solver.NumVar(0, 1, f"y_{ind, loc, node}")
         
         self.w = self.solver.NumVar(0, self.solver.infinity(), 'w')
         
@@ -81,17 +79,20 @@ class LP:
         #Assigning each person to only one facility
         for ind in range(len(self.client_locations)):
             person_limit: Constraint = self.solver.Constraint(1, 1, 'person_limit')
-            for address in self.Y.keys():
-                if address.index == ind:
-                    person_limit.SetCoefficient(self.Y[address], 1)
+            #for address in self.Y.keys():
+            for address in self.Y_ind_address[ind]:
+                #if address.index == ind:
+                person_limit.SetCoefficient(self.Y[address], 1)
+                self.solver.Add(self.Y[address] <= self.X[address.facility])
+                self.solver.Add(self.w >= self.Y[address] * calculate_distance(address.location, address.facility))
         
-        for address in self.Y.keys():
+        '''for address in self.Y.keys():
             #Finding maximum assignment cost
             self.solver.Add(self.w >= self.Y[address] * calculate_distance(address.location, address.facility))
             #Making sure assignment follow open facilities
-            self.solver.Add(self.Y[address] <= self.X[address.facility])
+            self.solver.Add(self.Y[address] <= self.X[address.facility])'''
         
-        #print('Number of constraints =', self.solver.NumConstraints())
+        print('Number of constraints =', self.solver.NumConstraints())
     
     def init_objective(self):
         """
@@ -119,10 +120,10 @@ class LP:
     
     def get_variable_solution(self):
         if self.status == pywraplp.Solver.OPTIMAL:
-            return [self.X[ind].solution_value() for ind in range(len(self.X))], {address: self.Y[address].solution_value() for address in self.Y.keys()}
+            return {ind: self.X[ind].solution_value() for ind in self.X.keys()}, {address: self.Y[address].solution_value() for address in self.Y.keys()}
         else:
             print("Not optimal")
-            return [], {}
+            return {}, {}
     
     def get_objective_solution(self):
         if self.status == pywraplp.Solver.OPTIMAL:
@@ -132,13 +133,13 @@ class LP:
             return -1
         
 class MILP(LP):
-    def __init__(self, k: int, solver_id = 'SCIP'):
-        super().__init__(G, k, solver_id)
+    def __init__(self, facility_locations: List[int], client_locations: List[List[int]], k: int, solver_id = 'SCIP'):
+        super().__init__(G, facility_locations, client_locations, k, solver_id)
     
     def init_variables(self):
         #Set indicator variables for indicating whether a facility is open
         self.X: Dict[int, Variable] = {}
-        for node in range(len(self.facility_locations)):
+        for node in self.facility_locations:
             self.X[node] = self.solver.IntVar(0, 1, f"x_{node}")
         
         #Set indicator variables for indicating an individual's assignment to a location and facility
@@ -151,4 +152,4 @@ class MILP(LP):
         
         self.w = self.solver.NumVar(0, self.solver.infinity(), 'w')
         
-        #print('Number of variables =', self.solver.NumVariables())
+        print('Number of variables =', self.solver.NumVariables())
