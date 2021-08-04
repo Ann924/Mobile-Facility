@@ -2,6 +2,7 @@ import random
 import numpy as np
 from collections import namedtuple
 from utils import *
+import time
 
 from typing import Dict, List, Tuple, Set
 from ortools.linear_solver import pywraplp
@@ -55,10 +56,9 @@ class LP:
             for loc in self.client_locations[ind]:
                 #Will not assign a client from a visited location to facility that is another visited location
                 for node in self.facility_locations:
-                    self.Y[address(ind, loc, node)] = self.solver.NumVar(0, 1, f"y_{ind, loc, node}")
-                    self.Y_ind_address[ind].append(address(ind, loc, node))
-                #for node in set(self.facility_locations) - (set(self.client_locations[ind])-{loc}):
-                #    self.Y[address(ind, loc, node)] = self.solver.NumVar(0, 1, f"y_{ind, loc, node}")
+                    if node == loc or node not in self.client_locations[ind]:
+                        self.Y[address(ind, loc, node)] = self.solver.NumVar(0, 1, f"y_{ind, loc, node}")
+                        self.Y_ind_address[ind].append(address(ind, loc, node))
         
         self.w = self.solver.NumVar(0, self.solver.infinity(), 'w')
         
@@ -71,11 +71,20 @@ class LP:
             self.budget.SetCoefficient(self.X[ind], 1)
         
         #Setting the constraint for no open facilities at homes
-        '''
-        self.home = self.solver.Constraint(0, 0, 'home')
+        
+        '''self.home = self.solver.Constraint(0, 0, 'home')
         for location_list in self.client_locations:
             self.home.SetCoefficient(self.X[location_list[0]], 1)'''
         
+        start = time.time()
+
+        G, loc_map, c_loc_map = precompute_distances(self.client_locations, self.facility_locations)
+            
+        end = time.time()
+        
+        print("distances calculated", end-start)
+        
+        start = time.time()
         #Assigning each person to only one facility
         for ind in range(len(self.client_locations)):
             person_limit: Constraint = self.solver.Constraint(1, 1, 'person_limit')
@@ -84,8 +93,10 @@ class LP:
                 #if address.index == ind:
                 person_limit.SetCoefficient(self.Y[address], 1)
                 self.solver.Add(self.Y[address] <= self.X[address.facility])
-                self.solver.Add(self.w >= self.Y[address] * calculate_distance(address.location, address.facility))
-        
+                self.solver.Add(self.w >= self.Y[address] * cost(G, loc_map[address.facility], c_loc_map[address.location]))
+                #self.solver.Add(self.w >= self.Y[address] * calculate_distance(address.location, address.facility))
+        end = time.time()
+        print(end-start)
         '''for address in self.Y.keys():
             #Finding maximum assignment cost
             self.solver.Add(self.w >= self.Y[address] * calculate_distance(address.location, address.facility))
@@ -144,11 +155,14 @@ class MILP(LP):
         
         #Set indicator variables for indicating an individual's assignment to a location and facility
         self.Y: Dict[Tuple[int, int, int], Variable] = {}
+        self.Y_ind_address: Dict[int, List[Tuple[int, int, int]]] = {}
         for ind in range(len(self.client_locations)):
+            self.Y_ind_address: Dict[int, List[Tuple[int, int, int]]] = {}
             for loc in self.client_locations[ind]:
                 #Will not assign a client from a visited location to facility that is another visited location
                 for node in set(self.facility_locations)-(set(self.client_locations[ind])-{loc}):
                     self.Y[address(ind, loc, node)] = self.solver.IntVar(0, 1, f"y_{ind, loc, node}")
+                    self.Y_ind_address[ind].append(address(ind, loc, node))
         
         self.w = self.solver.NumVar(0, self.solver.infinity(), 'w')
         

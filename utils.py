@@ -53,6 +53,7 @@ def create_data_input():
 
     return locations.to_dict('index'), client_locations.to_dict('index')
 
+#OUTDATED
 '''def create_location_data():
     """
     RETURNS
@@ -209,3 +210,23 @@ def format_location_output(facilities: List[int], assignments: List[Tuple[int, i
     """
     print("Facilities Opened: \t" + str(facilities))
     print("Client Assignment: \t" + str(assignments))
+
+def cost(G, loc1, loc2):
+    if loc1 <= loc2: return G[loc2][loc1]
+    else: return G[loc1][loc2]
+'''
+indices may be entirely different
+'''
+def precompute_distances(client_locations: List[List[int]], locations: List[int]):
+    G = []
+    loc_map = {}
+    client_loc_map = {}
+    clients = set(l for loc in client_locations for l in loc)
+    for l_ind, l in enumerate(locations):
+        loc_map[l_ind] = l
+        G.append([0 for i in range(len(locations))])
+        for c_ind, c in enumerate(clients):
+            client_loc_map[c_ind] = c
+            if c_ind<l_ind:
+                G[-1][c_ind] = calculate_distance(c, l)
+    return G, loc_map, c_loc_map

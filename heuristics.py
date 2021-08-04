@@ -4,6 +4,7 @@ from typing import Dict, List, Tuple, Set
 from problem import *
 from round import *
 from utils import *
+import time
 
 # TODO: standardize input structure (especially client_locations)
 
@@ -21,9 +22,7 @@ def independent_LP(k: int):
     assignments : List[Tuple[int, int]]
         visited location and facility assignment indexed by each client
     """
-    potential_facility_locations = list(range(30))
-    #locations = [i for i in range(len(LOCATIONS)) if LOCATIONS[i]['lid'] < HOME_SHIFT]
-    #potential_facility_locations = set(LOCATION_ASSIGNMENTS.iloc[:10].index)
+    potential_facility_locations = list(range(5))
     
     client_locations = []
     for person in CLIENT_LOCATIONS.values():
@@ -31,19 +30,17 @@ def independent_LP(k: int):
         if len(new_list)>0:
             client_locations.append(new_list)
     
-    print(len(potential_facility_locations))
-    print(len(client_locations))
+    print(len(potential_facility_locations), len(client_locations))
     
-    #potential_facility_locations = list(potential_facility_locations)
     #Solves the relaxed k-center linear program for multiple client locations
     my_lp = LP(list(potential_facility_locations), client_locations, k)
     my_lp.solve_lp()
-    X, Y = my_lp.get_variable_solution
+    X, Y = my_lp.get_variable_solution()
     
     X_index_map = {}
     X_list = []
     for i, k in enumerate(X.keys()):
-        X_map[i] = k
+        X_index_map[i] = k
         X_list.append(X[k])
     
     #Independently rounds on X, then reassigns Y according to X
@@ -167,15 +164,19 @@ def fpt(k: int, s: int):
     min_obj_guess: Tuple[int, List[int], Dict[Tuple[int, int, int]:int]] = (math.inf, [], {})
     
     # TODO : allow all the locations to be facility ones
+    count = 0
     for guess in powerset(list(potential_facility_locations)):
+        start = time.time()
         if len(guess)==0: continue
         
-        facilities = _k_supplier(list(set(guess)), locations, k)
+        facilities = _k_supplier(list(guess), locations, k)
         assignments, obj_value = assign_client_facilities(client_locations_excluded, facilities)
         
         if obj_value < min_obj_guess[0]:
             min_obj_guess = (obj_value, facilities, assignments)
-    
+        end = time.time()
+        count +=1
+        print(count, obj_value, end-start)
     return min_obj_guess[1], assign_facilities(min_obj_guess[1])
 
 def center_of_centers(k: int):
