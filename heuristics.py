@@ -1,4 +1,3 @@
-import networkx as nx
 import random
 from typing import Dict, List, Tuple, Set
 from problem import *
@@ -22,7 +21,7 @@ def independent_LP(k: int):
     assignments : List[Tuple[int, int]]
         visited location and facility assignment indexed by each client
     """
-    potential_facility_locations = list(range(5))
+    potential_facility_locations = list(range(10))
     
     client_locations = []
     for person in CLIENT_LOCATIONS.values():
@@ -174,6 +173,60 @@ def fpt(k: int, s: int):
         
         if obj_value < min_obj_guess[0]:
             min_obj_guess = (obj_value, facilities, assignments)
+        end = time.time()
+        count +=1
+        print(count, obj_value, end-start)
+    return min_obj_guess[1], assign_facilities(min_obj_guess[1])
+
+def fpt2(k: int, s: int):
+    """
+    Assumes the number of locations visited by clients is bounded by a constant
+    Run k-supplier on all combination sets of locations that will be covered by facilities. Select the guess and its open facilities with the smallest objective value.
+    
+    PARAMETERS
+    ----------
+    k : int
+        number of facilities to be opened
+    
+    RETURNS
+    ----------
+    facilities : List[int]
+        contains facility indices that are open
+    assignments : List[Tuple[int, int]]
+        visited location and facility assignment indexed by each client
+    """
+    potential_facility_locations = list(range(s))
+    
+    #Remove homes from the client_location lists
+    #TODO: Perhaps create mapping for the indices of people before exclusion and after?
+    client_locations_excluded = []
+    for person in CLIENT_LOCATIONS.values():
+        new_list = [p for p in person['lid'][1:] if p in potential_facility_locations]
+        if len(new_list)>0:
+            client_locations_excluded.append(new_list)
+    
+    locations = [i for i in range(len(LOCATIONS)) if LOCATIONS[i]['lid'] < HOME_SHIFT]
+    
+    #Select the guess and resulting facilities that yield the smallest objective value with k-supplier
+    min_obj_guess: Tuple[int, List[int], Dict[Tuple[int, int, int]:int]] = (math.inf, [], {})
+
+    start = time.time()
+    
+    G, loc_map, c_loc_map = precompute_distances(client_locations_excluded, locations)
+    
+    print(time.time() - start)
+    count = 0
+    for guess in powerset(list(potential_facility_locations)):
+        start = time.time()
+        if len(guess)==0: continue
+        
+        facilities = _k_supplier(list(guess), locations, k)
+        mid = time.time()
+        
+        obj_value = assign_client_facilities2(G, loc_map, c_loc_map, client_locations_excluded, facilities)
+        
+        if obj_value < min_obj_guess[0]:
+            min_obj_guess = (obj_value, facilities)
         end = time.time()
         count +=1
         print(count, obj_value, end-start)

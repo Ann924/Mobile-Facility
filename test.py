@@ -1,7 +1,7 @@
 import networkx as nx
 import random
 from heuristics import *
-from utils import *
+import utils
 
 #Possible heuristics: independent rounding, dependent rounding, dispersion (Madhav's version), k-median (w/ houses), high traffic areas
 #TODO: test more distances and costs

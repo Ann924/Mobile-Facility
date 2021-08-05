@@ -85,6 +85,8 @@ class LP:
         print("distances calculated", end-start)
         
         start = time.time()
+        
+        """Why does this take so LONG?"""
         #Assigning each person to only one facility
         for ind in range(len(self.client_locations)):
             person_limit: Constraint = self.solver.Constraint(1, 1, 'person_limit')
@@ -93,10 +95,11 @@ class LP:
                 #if address.index == ind:
                 person_limit.SetCoefficient(self.Y[address], 1)
                 self.solver.Add(self.Y[address] <= self.X[address.facility])
-                self.solver.Add(self.w >= self.Y[address] * cost(G, loc_map[address.facility], c_loc_map[address.location]))
+                self.solver.Add(self.w >= self.Y[address] * G[loc_map[address.facility]][c_loc_map[address.location]])
                 #self.solver.Add(self.w >= self.Y[address] * calculate_distance(address.location, address.facility))
         end = time.time()
         print(end-start)
+        
         '''for address in self.Y.keys():
             #Finding maximum assignment cost
             self.solver.Add(self.w >= self.Y[address] * calculate_distance(address.location, address.facility))
