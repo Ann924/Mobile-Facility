@@ -1,9 +1,9 @@
-import networkx as nx
 import random
 from typing import Dict, List, Tuple, Set
 from problem import *
 from round import *
 from utils import *
+import time
 
 # TODO: standardize input structure (especially client_locations)
 
@@ -21,34 +21,31 @@ def independent_LP(k: int):
     assignments : List[Tuple[int, int]]
         visited location and facility assignment indexed by each client
     """
-    potential_facility_locations = set(LOCATION_ASSIGNMENTS.iloc[range(30)].lid)
-    #potential_facility_locations = set(LOCATION_ASSIGNMENTS.iloc[:10].index)
+    potential_facility_locations = list(range(10))
     
     client_locations = []
-    for person in CLIENT_LOCATIONS.lid:
-        new_list = [p for p in person if p in potential_facility_locations]
+    for person in CLIENT_LOCATIONS.values():
+        new_list = [p for p in person['lid'] if p in potential_facility_locations]
         if len(new_list)>0:
             client_locations.append(new_list)
     
-    print(len(potential_facility_locations))
-    print(len(client_locations))
+    print(len(potential_facility_locations), len(client_locations))
     
-    #potential_facility_locations = list(potential_facility_locations)
     #Solves the relaxed k-center linear program for multiple client locations
     my_lp = LP(list(potential_facility_locations), client_locations, k)
     my_lp.solve_lp()
-    X, Y = my_lp.get_variable_solution
+    X, Y = my_lp.get_variable_solution()
     
     X_index_map = {}
     X_list = []
     for i, k in enumerate(X.keys()):
-        X_map[i] = k
+        X_index_map[i] = k
         X_list.append(X[k])
     
     #Independently rounds on X, then reassigns Y according to X
     X_rounded = [1 if random.random()<= x else 0 for x in X_list]
     facilities = [X_index_map[ind] for ind in range(len(X_rounded)) if X_rounded[ind]==1]
-    assignments = assign_facilities(client_locations, facilities)
+    assignments = assign_facilities(facilities)
     
     return facilities, assignments
 
@@ -150,35 +147,91 @@ def fpt(k: int, s: int):
     assignments : List[Tuple[int, int]]
         visited location and facility assignment indexed by each client
     """
-    potential_facility_locations = set(LOCATION_ASSIGNMENTS.iloc[range(s)].lid)
-    #potential_facility_locations = set(LOCATION_ASSIGNMENTS.iloc[:10].index)
+    potential_facility_locations = list(range(s))
     
     #Remove homes from the client_location lists
     #TODO: Perhaps create mapping for the indices of people before exclusion and after?
     client_locations_excluded = []
-    for person in CLIENT_LOCATIONS.lid:
-        new_list = [p for p in person[1:] if p in potential_facility_locations]
+    for person in CLIENT_LOCATIONS.values():
+        new_list = [p for p in person['lid'][1:] if p in potential_facility_locations]
         if len(new_list)>0:
             client_locations_excluded.append(new_list)
-            
-    print(len(potential_facility_locations), len(client_locations_excluded))
+    
+    locations = [i for i in range(len(LOCATIONS)) if LOCATIONS[i]['lid'] < HOME_SHIFT]
+    
     #Select the guess and resulting facilities that yield the smallest objective value with k-supplier
     min_obj_guess: Tuple[int, List[int], Dict[Tuple[int, int, int]:int]] = (math.inf, [], {})
     
+    # TODO : allow all the locations to be facility ones
+    count = 0
     for guess in powerset(list(potential_facility_locations)):
-        
+        start = time.time()
         if len(guess)==0: continue
         
-        facilities = _k_supplier(list(set(guess)), list(potential_facility_locations), k)
-        assignments = assign_facilities(client_locations_excluded, facilities)
-        obj_value = calculate_objective(assignments)
+        facilities = _k_supplier(list(guess), locations, k)
+        assignments, obj_value = assign_client_facilities(client_locations_excluded, facilities)
         
         if obj_value < min_obj_guess[0]:
             min_obj_guess = (obj_value, facilities, assignments)
-    
-    return min_obj_guess[1], min_obj_guess[2]
+        end = time.time()
+        count +=1
+        print(count, obj_value, end-start)
+    return min_obj_guess[1], assign_facilities(min_obj_guess[1])
 
-#NOT TESTED
+def fpt2(k: int, s: int):
+    """
+    Assumes the number of locations visited by clients is bounded by a constant
+    Run k-supplier on all combination sets of locations that will be covered by facilities. Select the guess and its open facilities with the smallest objective value.
+    
+    PARAMETERS
+    ----------
+    k : int
+        number of facilities to be opened
+    
+    RETURNS
+    ----------
+    facilities : List[int]
+        contains facility indices that are open
+    assignments : List[Tuple[int, int]]
+        visited location and facility assignment indexed by each client
+    """
+    potential_facility_locations = list(range(s))
+    
+    #Remove homes from the client_location lists
+    #TODO: Perhaps create mapping for the indices of people before exclusion and after?
+    client_locations_excluded = []
+    for person in CLIENT_LOCATIONS.values():
+        new_list = [p for p in person['lid'][1:] if p in potential_facility_locations]
+        if len(new_list)>0:
+            client_locations_excluded.append(new_list)
+    
+    locations = [i for i in range(len(LOCATIONS)) if LOCATIONS[i]['lid'] < HOME_SHIFT]
+    
+    #Select the guess and resulting facilities that yield the smallest objective value with k-supplier
+    min_obj_guess: Tuple[int, List[int], Dict[Tuple[int, int, int]:int]] = (math.inf, [], {})
+
+    start = time.time()
+    
+    G, loc_map, c_loc_map = precompute_distances(client_locations_excluded, locations)
+    
+    print(time.time() - start)
+    count = 0
+    for guess in powerset(list(potential_facility_locations)):
+        start = time.time()
+        if len(guess)==0: continue
+        
+        facilities = _k_supplier(list(guess), locations, k)
+        mid = time.time()
+        
+        obj_value = assign_client_facilities2(G, loc_map, c_loc_map, client_locations_excluded, facilities)
+        
+        if obj_value < min_obj_guess[0]:
+            min_obj_guess = (obj_value, facilities)
+        end = time.time()
+        count +=1
+        print(count, obj_value, end-start)
+    return min_obj_guess[1], assign_facilities(min_obj_guess[1])
+
 def center_of_centers(k: int):
     """
     PARAMETERS
@@ -195,7 +248,9 @@ def center_of_centers(k: int):
     """
     clients = []
     
-    for client in CLIENT_LOCATIONS.lid:
+    for client_row in CLIENT_LOCATIONS.values():
+        
+        client = client_row["lid"]
         
         dispersion = 1e10
         effective_center = -1
@@ -213,14 +268,11 @@ def center_of_centers(k: int):
                 
         clients.append(effective_center)
         
-    homes = [locs[0] for locs in CLIENT_LOCATIONS.lid]
-    locations = [i for i in range(len(LOCATIONS)) if i not in homes]
+    locations = [i for i in range(len(LOCATIONS)) if LOCATIONS[i]['lid'] < HOME_SHIFT]
     facilities = _k_supplier(clients, locations, k)
-    print(len(facilities))
     
-    return facilities, assign_facilities([locs[:1] for locs in CLIENT_LOCATIONS.lid], facilities)
+    return facilities, assign_facilities(facilities)
 
-#NOT TESTED
 def center_of_homes(k: int):
     """
     Opens facilities based only on home-locations
@@ -237,29 +289,12 @@ def center_of_homes(k: int):
     assignments : List[Tuple[int, int]]
         visited location and facility assignment indexed by each client
     """
-    potential_facility_locations = set(LOCATION_ASSIGNMENTS.iloc[range(20)].lid)
-    print(potential_facility_locations)
+    potential_facility_locations = [key for key in LOCATIONS.keys() if LOCATIONS[key]['lid'] < HOME_SHIFT]
+    homes = set(locs['lid'][0] for locs in CLIENT_LOCATIONS.values())
     
-    homes = set(locs[0] for locs in CLIENT_LOCATIONS.lid)
-
-    locations = [i for i in potential_facility_locations if i not in homes]
-    facilities = _k_supplier(list(homes), locations, k)
-    print(len(facilities))
+    facilities = _k_supplier(list(homes), potential_facility_locations, k)
     
-    return facilities, assign_facilities([locs[:1] for locs in CLIENT_LOCATIONS.lid], facilities)
-    
-
-def _possible_distances(clients:List[int], locations: List[int]):
-    """
-    Calculates distance between clients and between clients and facilities
-    """
-    distances = set()
-    for ind in range(len(clients)):
-        for l in range(len(locations)):
-            distances.add(calculate_distance(clients[ind], locations[l]))
-        for c in range(ind, len(clients)):
-            distances.add(calculate_distance(clients[ind], clients[c]))
-    return distances
+    return facilities, assign_facilities(facilities)
 
 def _k_supplier(clients: List[int], locations: List[int], k: int):
     """
@@ -282,31 +317,27 @@ def _k_supplier(clients: List[int], locations: List[int], k: int):
     facilities : List[int]
         the facility locations that are open
     """
-    
-    #Set the radius to ensure there exists a facility within radius r of each client
-    max_min_dist = max([min([calculate_distance(c, f) for f in locations]) for c in clients])
-    
-    #Binary search on r from the sorted list of distances
-    possible_OPT = [i for i in _possible_distances(clients, locations) if i>=max_min_dist]
-    possible_OPT.sort()
-    
-    l = 0;
-    r = len(possible_OPT)-1
+    l = 0
+    r = 40075
     to_ret = -1
+    EPSILON = 10**(-6)
+    
+    while r-l > EPSILON:
+    
+        mid = l + (r - l) / 2
 
-    while l <= r:
-  
-        mid = l + (r - l) // 2;
-        
-        if len(_check_radius(possible_OPT[mid], clients)) <= k:
-            r = mid - 1
-            to_ret = mid
+        if len(_check_radius(mid, clients)) <= k:
+            facilities: List[int] = _locate_facilities(mid,
+                                    _check_radius(mid, clients), locations, k)
+            if facilities:
+                to_ret = mid
+                r = mid
+            else:
+                l = mid
         else:
-            l = mid + 1
-        
-    facilities: List[int] = _locate_facilities(possible_OPT[to_ret],
-                                    _check_radius(possible_OPT[mid], clients), locations, k)
-    return facilities
+            l = mid
+    
+    return _locate_facilities(to_ret,_check_radius(to_ret, clients), locations, k)
 
 def _check_radius(radius: int, clients: List[int]):
     """Determine the maximal independent set of pairiwse independent client balls with given radius
@@ -333,14 +364,14 @@ def _check_radius(radius: int, clients: List[int]):
     while len(V)!=0:
         v = V.pop()
         pairwise_disjoint.add(v)
+        
         remove = set()
         for i in V:
-            if calculate_distance(v,i) <= 2*radius:
+            if calculate_distance(v, i) <= 2*radius:
                 remove.add(i)
         V-=remove
     
     return pairwise_disjoint
-
 
 def _locate_facilities(radius: int, pairwise_disjoint: Set[int], locations: List[int], k: int):
     """Select a facility to open within the given radius for each pairwise_disjoint client
@@ -367,9 +398,12 @@ def _locate_facilities(radius: int, pairwise_disjoint: Set[int], locations: List
     facilities = set()
     for c in pairwise_disjoint:
         for l in locations:
-            if calculate_distance(c, l) <= 2*radius:
+            if calculate_distance(c, l) <= radius:
                 facilities.add(l)
                 break
+    
+    if len(facilities) < len(pairwise_disjoint):
+        return None
     
     #Check if k larger than the number of possible facility locations
     k = min(k, len(locations))
