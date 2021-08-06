@@ -16,6 +16,7 @@ dependencies:
     - awscli
     - flake8
     - python-dotenv
+    - joblib
     - pip:
         - EoN
         - ortools
