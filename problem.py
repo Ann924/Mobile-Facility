@@ -1,7 +1,8 @@
 import random
 import numpy as np
 from collections import namedtuple
-from utils import *
+from utils import precompute_distances 
+from config import address
 import time
 
 from typing import Dict, List, Tuple, Set
@@ -97,6 +98,7 @@ class LP:
                 self.solver.Add(self.Y[address] <= self.X[address.facility])
                 self.solver.Add(self.w >= self.Y[address] * G[loc_map[address.facility]][c_loc_map[address.location]])
                 #self.solver.Add(self.w >= self.Y[address] * calculate_distance(address.location, address.facility))
+        
         end = time.time()
         print(end-start)
         
@@ -148,7 +150,7 @@ class LP:
         
 class MILP(LP):
     def __init__(self, facility_locations: List[int], client_locations: List[List[int]], k: int, solver_id = 'SCIP'):
-        super().__init__(G, facility_locations, client_locations, k, solver_id)
+        super().__init__(facility_locations, client_locations, k, solver_id)
     
     def init_variables(self):
         #Set indicator variables for indicating whether a facility is open
@@ -160,7 +162,7 @@ class MILP(LP):
         self.Y: Dict[Tuple[int, int, int], Variable] = {}
         self.Y_ind_address: Dict[int, List[Tuple[int, int, int]]] = {}
         for ind in range(len(self.client_locations)):
-            self.Y_ind_address: Dict[int, List[Tuple[int, int, int]]] = {}
+            self.Y_ind_address[ind]= []
             for loc in self.client_locations[ind]:
                 #Will not assign a client from a visited location to facility that is another visited location
                 for node in set(self.facility_locations)-(set(self.client_locations[ind])-{loc}):
