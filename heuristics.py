@@ -3,13 +3,14 @@ from typing import Dict, List, Tuple, Set
 from problem import *
 from round import *
 from utils import *
+from config import LOCATIONS, CLIENT_LOCATIONS, HOME_SHIFT
 import time
+import ray
 from joblib import Parallel, delayed
-
 
 # TODO: standardize input structure (especially client_locations)
 
-def independent_LP(k: int):
+def independent_LP(k: int, facility_limit: int, client_limit: int):
     """
     PARAMETERS
     ----------
@@ -23,13 +24,16 @@ def independent_LP(k: int):
     assignments : List[Tuple[int, int]]
         visited location and facility assignment indexed by each client
     """
-    potential_facility_locations = list(range(10))
+    potential_facility_locations = list(range(facility_limit))
     
     client_locations = []
     for person in CLIENT_LOCATIONS.values():
         new_list = [p for p in person['lid'] if p in potential_facility_locations]
         if len(new_list)>0:
             client_locations.append(new_list)
+    
+    if client_limit <= len(client_locations):
+        client_locations = client_locations[:client_limit]
     
     print(len(potential_facility_locations), len(client_locations))
     
@@ -51,7 +55,7 @@ def independent_LP(k: int):
     
     return facilities, assignments
 
-def integer_LP(k: int):
+def integer_LP(k: int, facility_limit: int, client_limit: int):
     """
     PARAMETERS
     ----------
@@ -65,33 +69,33 @@ def integer_LP(k: int):
     assignments : List[Tuple[int, int]]
         visited location and facility assignment indexed by each client
     """
-    potential_facility_locations = set(LOCATION_ASSIGNMENTS.iloc[range(30)].lid)
-    #potential_facility_locations = set(LOCATION_ASSIGNMENTS.iloc[:10].index)
+    potential_facility_locations = list(range(facility_limit))
     
     client_locations = []
-    for person in CLIENT_LOCATIONS.lid:
-        #new_list = list(set(person).intersection(potential_facility_locations))
-        new_list = [p for p in person if p in potential_facility_locations]
+    for person in CLIENT_LOCATIONS.values():
+        new_list = [p for p in person['lid'] if p in potential_facility_locations]
         if len(new_list)>0:
             client_locations.append(new_list)
     
-    print(len(potential_facility_locations))
-    print(len(client_locations))
+    if client_limit <= len(client_locations):
+        client_locations = client_locations[:client_limit]
+    
+    print(len(potential_facility_locations), len(client_locations))
     
     #Solves the integer linear program for multiple client locations
-    my_lp = MILP(k)
+    my_lp = MILP(potential_facility_locations, client_locations, k)
     my_lp.solve_lp()
     X, Y = my_lp.get_variable_solution()
 
     facilities: List[int] = [ind for ind in X.keys() if X[ind]==1]
-    assignments: List[Tuple[int, int]] = [() for i in range(len(CLIENT_LOCATIONS))]
-    for address, indicator in Y.items():
-        if indicator == 1:
-            assignments[address.index] = (address.location, address.facility)
+    assignments: List[Tuple[int, int]] = assign_facilities(facilities)
+    #for address, indicator in Y.items():
+    #    if indicator == 1:
+    #        assignments[address.index] = (address.location, address.facility)
     
     return facilities, assignments
 
-def dependent_LP(k: int):
+def dependent_LP(k: int, facility_limit: int, client_limit: int):
     """
     PARAMETERS
     ----------
@@ -105,15 +109,18 @@ def dependent_LP(k: int):
     assignments : List[Tuple[int, int]]
         visited location and facility assignment indexed by each client
     """
-    potential_facility_locations = set(LOCATION_ASSIGNMENTS.iloc[range(30)].lid)
-    #potential_facility_locations = set(LOCATION_ASSIGNMENTS.iloc[:10].index)
+    potential_facility_locations = list(range(facility_limit))
     
     client_locations = []
-    for person in CLIENT_LOCATIONS.lid:
-        #new_list = list(set(person).intersection(potential_facility_locations))
-        new_list = [p for p in person if p in potential_facility_locations]
+    for person in CLIENT_LOCATIONS.values():
+        new_list = [p for p in person['lid'] if p in potential_facility_locations]
         if len(new_list)>0:
             client_locations.append(new_list)
+    
+    if client_limit <= len(client_locations):
+        client_locations = client_locations[:client_limit]
+    
+    print(len(potential_facility_locations), len(client_locations))
     
     #Solves the relaxed linear program for multiple client locations and uses dependent rounding on X
     my_lp = LP(list(potential_facility_locations), client_locations, k)
@@ -123,12 +130,12 @@ def dependent_LP(k: int):
     X_index_map = {}
     X_list = []
     for i, k in enumerate(X.keys()):
-        X_map[i] = k
+        X_index_map[i] = k
         X_list.append(X[k])
     
     X_rounded = D_prime(np.array(X_list))
     facilities = [X_index_map[ind] for ind in range(len(X_rounded)) if X_rounded[ind]==1]
-    assignments = assign_facilities(client_locations, facilities)
+    assignments = assign_facilities(facilities)
     
     return facilities, assignments
 
@@ -234,7 +241,53 @@ def fpt2(k: int, s: int):
         print(count, obj_value, end-start)
     return min_obj_guess[1], assign_facilities(min_obj_guess[1])
 
-def fpt2_parallel(k: int, s: int):
+def fpt2_parallel(k: int, s: int, track_progress = False):
+    """
+    Assumes the number of locations visited by clients is bounded by a constant
+    Run k-supplier on all combination sets of locations that will be covered by facilities. Select the guess and its open facilities with the smallest objective value.
+    
+    PARAMETERS
+    ----------
+    k : int
+        number of facilities to be opened
+    s: int
+        total number of visited locations is bounded by s
+    track_progress: bool
+        prints progress for parallel computing
+    
+    RETURNS
+    ----------
+    facilities : List[int]
+        contains facility indices that are open
+    assignments : List[Tuple[int, int]]
+        visited location and facility assignment indexed by each client
+    """
+    potential_facility_locations = list(range(s))
+    
+    #Remove homes from the client_location lists
+    #TODO: Perhaps create mapping for the indices of people before exclusion and after?
+    client_locations_excluded = []
+    for person in CLIENT_LOCATIONS.values():
+        new_list = [p for p in person['lid'][1:] if p in potential_facility_locations]
+        if len(new_list)>0:
+            client_locations_excluded.append(new_list)
+    
+    locations = [i for i in range(len(LOCATIONS)) if LOCATIONS[i]['lid'] < HOME_SHIFT]
+    
+    G, loc_map, c_loc_map = precompute_distances(client_locations_excluded, locations)
+    
+    def process(guess):
+        facilities = _k_supplier(list(guess), locations, k)
+        obj_value = assign_client_facilities2(G, loc_map, c_loc_map, client_locations_excluded, facilities)
+        
+        return obj_value, facilities
+
+    results = Parallel(n_jobs=40, verbose = track_progress)(delayed(process)(guess) for guess in powerset(list(potential_facility_locations)))
+    
+    min_obj_guess: Tuple[int, List[int]] = min(results)
+    return min_obj_guess, assign_facilities(min_obj_guess[1])
+
+def fpt2_parallel2(k: int, s: int):
     """
     Assumes the number of locations visited by clients is bounded by a constant
     Run k-supplier on all combination sets of locations that will be covered by facilities. Select the guess and its open facilities with the smallest objective value.
@@ -265,14 +318,18 @@ def fpt2_parallel(k: int, s: int):
     
     G, loc_map, c_loc_map = precompute_distances(client_locations_excluded, locations)
     
+    ray.init(ignore_reinit_error=True)
+    
+    @ray.remote
     def process(guess):
         facilities = _k_supplier(list(guess), locations, k)
         obj_value = assign_client_facilities2(G, loc_map, c_loc_map, client_locations_excluded, facilities)
         
         return obj_value, facilities
-
-    results = Parallel(n_jobs=16)(delayed(process)(guess) for guess in powerset(list(potential_facility_locations)))
     
+    futures = [process.remote(guess) for guess in powerset(list(potential_facility_locations))]
+    results = ray.get(futures)
+
     min_obj_guess: Tuple[int, List[int]] = min(results)
     return min_obj_guess, assign_facilities(min_obj_guess[1])
 
@@ -362,8 +419,8 @@ def _k_supplier(clients: List[int], locations: List[int], k: int):
         the facility locations that are open
     """
     l = 0
-    #r = 40075
-    r=30
+    r = 40075
+    #r=30
     to_ret = -1
     #EPSILON = 10**(-6)
     EPSILON = 10**(-4)
@@ -461,3 +518,6 @@ def _locate_facilities(radius: int, pairwise_disjoint: Set[int], locations: List
             facilities.add(unopened_facilities.pop())
     
     return list(facilities)
+
+def most_populous(k: int):
+    return list(range(k)), assign_facilities(list(range(k)))
