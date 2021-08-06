@@ -5,6 +5,6 @@ setup(
     packages=find_packages(),
     version='0.1.0',
     description='mobile facility placement',
-    author='Your name (or your organization/company/team)',
+    author='Ann Li, George Li, Zach Zhao',
     license='MIT',
 )

@@ -19,4 +19,4 @@ dependencies:
     - pip:
         - EoN
         - ortools
-        - -e .
+        - -e .src
