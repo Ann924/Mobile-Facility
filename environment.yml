@@ -10,6 +10,13 @@ dependencies:
     - seaborn
     - pip
     - jupyter
+    - click
+    - Sphinx
+    - coverage
+    - awscli
+    - flake8
+    - python-dotenv
     - pip:
-          - EoN
-          - ortools
+        - EoN
+        - ortools
+        - -e .
