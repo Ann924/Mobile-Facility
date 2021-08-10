@@ -88,12 +88,12 @@ def test_function(k:int, s:int):
     print("Recalculated Objective Value: \t" + str(calculate_objective(Y_fpt)))
 
 def fpt_experiments(k: int, s: int):
-    X_fpt, Y_fpt = fpt2_parallel2(k, s)
+    X_fpt, Y_fpt = fpt3_parallel2(k, s)
     obj_value = calculate_objective(Y_fpt)
     
     data = {"k": k, "s": s, "facilities": X_fpt, "assignments": Y_fpt, "obj_value": obj_value}
     
-    filename = "fpt_exp" + "_" + str(s) + ".json"
+    filename = "fpt_exp" + "_" + str(s) + "2.json"
     with open(filename, 'w') as f:
         json.dump(data, f)
     
