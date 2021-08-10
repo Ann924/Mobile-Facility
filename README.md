@@ -55,3 +55,34 @@ Project Organization
 --------
 
 <p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p>
+
+
+### Format of processed datasets
+
+#### agg_location.json
+```
+{
+  meta: {
+    L: Specifies the maximum edge cutoff for cluster
+  },
+  data: {
+    aid: The new Aggregate ID, currently ordered by cluster size, and then minimum combined lid (with `HOME_SHIFT`)
+    longitude: geo coordinates, the median longitude of members
+    latitude: geo coordinates, the median latitude of members
+    members: list of lids that are aggregated into this aid
+    home: true if all members are classified as homes
+  }
+}
+
+#### agg_person.json
+```
+{
+  meta: {
+  },
+  data: {
+    [pid]: [aid]
+  }
+}
+pid: a person id
+aid: the new Aggregated ID specified in agg_location
+```
