@@ -8,7 +8,7 @@ from itertools import chain, combinations
 import json
 
 address = namedtuple('address', ['index', 'location', 'facility'])
-HOME_SHIFT=1000000000
+HOME_SHIFT=1000000000 # 1 Billion 10^9
 
 def create_data_input():
     #Read in both the activity and residence locations
@@ -74,6 +74,9 @@ def calculate_distance(loc1: int, loc2: int):
     coord1 = (coord1_row['latitude'], coord1_row['longitude'])
     coord2 = (coord2_row['latitude'], coord2_row['longitude'])
     return geopy.distance.great_circle(coord1, coord2).km
+
+def distance(coord1, coord2):
+    return geopy.distance.distance(coord1, coord2).km
     
 # TODO: Do we still pass in visited locations
 def assign_facilities(facilities: List[int]):
