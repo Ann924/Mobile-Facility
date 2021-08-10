@@ -1,5 +1,5 @@
 __pycache__/
 *.py[cod]
 *$py.class
-data/**
+data/raw
 va_adult_activity_location_assignment_week.csv
