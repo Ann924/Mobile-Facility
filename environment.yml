@@ -21,3 +21,4 @@ dependencies:
         - EoN
         - ortools
         - -e .src
+        - ray
