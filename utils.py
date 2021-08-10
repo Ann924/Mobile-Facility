@@ -1,5 +1,6 @@
 from typing import Dict, List, Tuple, Set
 import random
+import math
 from config import LOCATIONS, CLIENT_LOCATIONS, HOME_SHIFT, address
 import geopy.distance
 from itertools import chain, combinations
@@ -11,6 +12,16 @@ def powerset(iterable):
     "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
     s = list(iterable)
     return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
+
+def cover_most(s: int):
+    covered = set()
+    selected = []
+    for i in range(s):
+        most_coverage = max([(len(set(LOCATIONS[l]['pid']) - covered), l) for l in LOCATIONS.keys()])
+        selected.append(most_coverage[1])
+        covered = covered.union(LOCATIONS[most_coverage[1]]['pid'])
+    print(len(covered)/len(CLIENT_LOCATIONS))
+    return selected
 
 def calculate_distance(loc1: int, loc2: int):
     """

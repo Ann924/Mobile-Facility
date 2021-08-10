@@ -333,6 +333,51 @@ def fpt2_parallel2(k: int, s: int):
     min_obj_guess: Tuple[int, List[int]] = min(results)
     return min_obj_guess, assign_facilities(min_obj_guess[1])
 
+def fpt3_parallel2(k: int, s: int):
+    """
+    Assumes the number of locations visited by clients is bounded by a constant
+    Run k-supplier on all combination sets of locations that will be covered by facilities. Select the guess and its open facilities with the smallest objective value.
+    
+    PARAMETERS
+    ----------
+    k : int
+        number of facilities to be opened
+    
+    RETURNS
+    ----------
+    facilities : List[int]
+        contains facility indices that are open
+    assignments : List[Tuple[int, int]]
+        visited location and facility assignment indexed by each client
+    """
+    potential_facility_locations = cover_most(s)
+    
+    #Remove homes from the client_location lists
+    #TODO: Perhaps create mapping for the indices of people before exclusion and after?
+    client_locations_excluded = []
+    for person in CLIENT_LOCATIONS.values():
+        new_list = [p for p in person['lid'][1:] if p in potential_facility_locations]
+        if len(new_list)>0:
+            client_locations_excluded.append(new_list)
+    
+    locations = [i for i in range(len(LOCATIONS)) if LOCATIONS[i]['lid'] < HOME_SHIFT]
+    
+    G, loc_map, c_loc_map = precompute_distances(client_locations_excluded, locations)
+    
+    ray.init(ignore_reinit_error=True)
+    
+    @ray.remote
+    def process(guess):
+        facilities = _k_supplier(list(guess), locations, k)
+        obj_value = assign_client_facilities2(G, loc_map, c_loc_map, client_locations_excluded, facilities)
+        return obj_value, facilities
+    
+    futures = [process.remote(guess) for guess in powerset(list(potential_facility_locations))]
+    results = ray.get(futures)
+
+    min_obj_guess: Tuple[int, List[int]] = min(results)
+    return min_obj_guess, assign_facilities(min_obj_guess[1])
+
 def center_of_centers(k: int):
     """
     PARAMETERS
