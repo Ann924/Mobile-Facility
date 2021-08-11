@@ -363,7 +363,7 @@ def _k_supplier(clients: List[int], locations: List[int], k: int):
     """
     l = 0
     #r = 40075
-    r=30
+    r=100
     to_ret = -1
     #EPSILON = 10**(-6)
     EPSILON = 10**(-4)
