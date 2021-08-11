@@ -108,7 +108,8 @@ def read_data_input(filename):
     file = open(filename, 'r')
     data = json.load(file)
     LOCATIONS = {int(ind): value for ind, value in data["LOCATIONS"].items()}
-    return LOCATIONS, data["CLIENT_LOCATIONS"]
+    CLIENT_LOCATIONS = {int(ind): value for ind, value in data["CLIENT_LOCATIONS"].items()}
+    return LOCATIONS, CLIENT_LOCATIONS
 
 address = namedtuple('address', ['index', 'location', 'facility'])
 HOME_SHIFT=1000000000

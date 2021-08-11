@@ -419,6 +419,51 @@ def center_of_centers(k: int):
     
     return facilities, assign_facilities(facilities)
 
+def center_of_centers2(k: int):
+    """
+    Finds center of each client's locations by calculating the average meridian coordinates.
+    PARAMETERS
+    ----------
+    k : int
+        number of facilities to be opened
+    
+    RETURNS
+    ----------
+    facilities : List[int]
+        contains facility indices that are open
+    assignments : List[Tuple[int, int]]
+        visited location and facility assignment indexed by each client
+    """
+    clients = []
+    
+    for client_row in CLIENT_LOCATIONS.values():
+        
+        client = client_row["lid"]
+        
+        latitude = []
+        longitude = []
+        for center in client:
+            lat, long = LOCATIONS[center]['latitude'], LOCATIONS[center]['longitude']
+            latitude.append(lat)
+            longitude.append(long)
+        
+        clients.append((sum(latitude)/len(latitude), sum(longitude)/len(longitude)))
+    
+    original_loc_length = len(LOCATIONS.keys())
+    
+    for i in range(len(clients)):
+        LOCATIONS[original_loc_length+i] = {'lid': -1, 'longitude': clients[i][1], 'latitude': clients[i][0], 'activity':-1, 'pid':[i]}
+    
+    locations = [i for i in range(original_loc_length) if LOCATIONS[i]['lid'] < HOME_SHIFT]
+    facilities = _k_supplier(list(range(original_loc_length+ len(clients))), locations, k)
+    
+    for i in range(len(clients)):
+        LOCATIONS.pop(original_loc_length+i)
+    
+    print(len(LOCATIONS.keys()))
+    
+    return facilities, assign_facilities(facilities)
+
 def center_of_homes(k: int):
     """
     Opens facilities based only on home-locations

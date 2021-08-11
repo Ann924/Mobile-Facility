@@ -100,6 +100,17 @@ def fpt_experiments(k: int, s: int):
     print(X_fpt)
     print("Recalculated Objective Value: \t" + str(obj_value))
 
+def center_of_centers_experiments(k: int):
+    facilities, assignments = center_of_centers2(k)
+    print(facilities)
+    print(len(LOCATIONS))
+    print(calculate_objective(assignments))
+    
+    facilities, assignments = center_of_centers(k)
+    print(facilities)
+    print(len(LOCATIONS))
+    print(calculate_objective(assignments))
+
 #NOT USED
 '''def test_line(number_of_points:int, distance_range:Tuple[float, float]) -> List[List[float]]:
     """
@@ -149,5 +160,6 @@ def fpt_experiments(k: int, s: int):
     
     return G'''
 
-fpt_experiments(5, 25)
+#fpt_experiments(5, 25)
 #test_function(5, 30)
+center_of_centers_experiments(5)
