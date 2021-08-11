@@ -14,6 +14,9 @@ def powerset(iterable):
     return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
 
 def cover_most(s: int):
+    """
+    Helper method for FPT: returns the set of activity locations of size s that cover the most clients
+    """
     covered = set()
     selected = []
     for i in range(s):
