@@ -53,6 +53,9 @@ def create_data_input():
     return locations.to_dict('index'), client_locations.to_dict('index')
 
 def create_data_input2():
+    """
+    LOCATIONS contains the pid of clients that visit the location
+    """
     #Read in both the activity and residence locations
     df_activity = pd.read_csv("usa_va_charlottesville_city_activity_locations.csv").rename({"alid": "lid"}, axis = 'columns')
     df_residence = pd.read_csv("usa_va_charlottesville_city_residence_locations.csv")
