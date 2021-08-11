@@ -49,7 +49,7 @@ class LP:
             self.X[node] = self.solver.NumVar(0, 1, f"x_{node}")
         
         #Set indicator variables for indicating an individual's assignment to a location and facility
-        '''self.Y: Dict[Tuple[int, int, int], Variable] = {}
+        self.Y: Dict[Tuple[int, int, int], Variable] = {}
         self.Y_ind_address: Dict[int, List[Tuple[int, int, int]]] = {}
         #self.Y: Dict[int, Dict[Tuple[int, int], Variable]] = {}
         for ind in range(len(self.client_locations)):
@@ -59,7 +59,7 @@ class LP:
                 for node in self.facility_locations:
                     if node == loc or node not in self.client_locations[ind]:
                         self.Y[address(ind, loc, node)] = self.solver.NumVar(0, 1, f"y_{ind, loc, node}")
-                        self.Y_ind_address[ind].append(address(ind, loc, node))'''
+                        self.Y_ind_address[ind].append(address(ind, loc, node))
         
         self.Y: Dict[Tuple[int, int, int], Variable] = {}
         self.Y_ind_address: Dict[int, List[Tuple[int, int, int]]] = {}
@@ -102,6 +102,14 @@ class LP:
                 self.solver.Add(self.w >= self.Y[address] * G[loc_map[address.facility]][c_loc_map[address.location]])
                 #self.solver.Add(self.w >= self.Y[address] * calculate_distance(address.location, address.facility))
         
+        """
+        for ind in range(len(self.client_locations)):
+            person_limit: Constraint = self.solver.Constraint(1, 1, 'person_limit')
+            for address in self.Y_ind_address[ind]:
+                person_limit.SetCoefficient(self.Y[address], 1)
+                self.solver.Add(self.Y[address] <= self.X[address.facility])
+                self.solver.Add(self.w >= self.Y[address] * G[loc_map[address.facility]][c_loc_map[address.location]])
+        """
         end = time.time()
         print(end-start)
         
