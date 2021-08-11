@@ -73,6 +73,7 @@ Project Organization
     home: true if all members are classified as homes
   }
 }
+```
 
 #### agg_person.json
 ```
