@@ -4,6 +4,8 @@ from collections import namedtuple
 from utils import precompute_distances 
 from config import address
 import time
+import ray
+from joblib import Parallel, delayed
 
 from typing import Dict, List, Tuple, Set
 from ortools.linear_solver import pywraplp
@@ -51,7 +53,6 @@ class LP:
         #Set indicator variables for indicating an individual's assignment to a location and facility
         self.Y: Dict[Tuple[int, int, int], Variable] = {}
         self.Y_ind_address: Dict[int, List[Tuple[int, int, int]]] = {}
-        #self.Y: Dict[int, Dict[Tuple[int, int], Variable]] = {}
         for ind in range(len(self.client_locations)):
             self.Y_ind_address[ind] = []
             for loc in self.client_locations[ind]:
@@ -61,8 +62,6 @@ class LP:
                         self.Y[address(ind, loc, node)] = self.solver.NumVar(0, 1, f"y_{ind, loc, node}")
                         self.Y_ind_address[ind].append(address(ind, loc, node))
         
-        self.Y: Dict[Tuple[int, int, int], Variable] = {}
-        self.Y_ind_address: Dict[int, List[Tuple[int, int, int]]] = {}
         
         self.w = self.solver.NumVar(0, self.solver.infinity(), 'w')
         
@@ -90,34 +89,43 @@ class LP:
         
         start = time.time()
         
-        """Why does this take so LONG?"""
-        #Assigning each person to only one facility
-        for ind in range(len(self.client_locations)):
-            person_limit: Constraint = self.solver.Constraint(1, 1, 'person_limit')
-            #for address in self.Y.keys():
+        """def process(self, ind):
+            person_limit: Constraint = self.solver.Constraint(1,1, 'person_limit')
             for address in self.Y_ind_address[ind]:
-                #if address.index == ind:
                 person_limit.SetCoefficient(self.Y[address], 1)
                 self.solver.Add(self.Y[address] <= self.X[address.facility])
-                self.solver.Add(self.w >= self.Y[address] * G[loc_map[address.facility]][c_loc_map[address.location]])
-                #self.solver.Add(self.w >= self.Y[address] * calculate_distance(address.location, address.facility))
+            self.solver.Add(self.w >= self.solver.Sum([self.Y[address]* G[loc_map[address.facility]][c_loc_map[address.location]] for address in self.Y_ind_address[ind]]))
+
+        results = Parallel(n_jobs=40, verbose = 1)(delayed(process)(self, ind) for ind in range(len(self.client_locations)))"""
         
-        """
-        for ind in range(len(self.client_locations)):
-            person_limit: Constraint = self.solver.Constraint(1, 1, 'person_limit')
+        """Why does this take so LONG?"""
+        """ray.init(ignore_reinit_error=True)
+        
+        @ray.remote
+        def set_constraints(self, ind):
+            person_limit: Constraint = self.solver.Constraint(1,1, 'person_limit')
             for address in self.Y_ind_address[ind]:
                 person_limit.SetCoefficient(self.Y[address], 1)
                 self.solver.Add(self.Y[address] <= self.X[address.facility])
-                self.solver.Add(self.w >= self.Y[address] * G[loc_map[address.facility]][c_loc_map[address.location]])
-        """
+            
+            self.solver.Add(self.w >= self.solver.Sum([self.Y[address]* G[loc_map[address.facility]][c_loc_map[address.location]] for address in self.Y_ind_address[ind]]))
+        
+        for ind in range(len(self.client_locations)):
+            set_constraints.remote(self, ind)"""
+        
+        for ind in range(len(self.client_locations)):
+            person_limit: Constraint = self.solver.Constraint(1,1, 'person_limit')
+            #max_limit = []
+            for address in self.Y_ind_address[ind]:
+                person_limit.SetCoefficient(self.Y[address], 1)
+                self.solver.Add(self.Y[address] <= self.X[address.facility])
+                #max_limit.append(self.Y[address]* G[loc_map[address.facility]][c_loc_map[address.location]])
+            #self.solver.Add(self.solver.Sum([self.Y[address] for address in self.Y_ind_address[ind]]) == 1)
+            #self.solver.Add(self.w >= self.solver.Sum(max_limit))
+            self.solver.Add(self.w >= self.solver.Sum([self.Y[address]* G[loc_map[address.facility]][c_loc_map[address.location]] for address in self.Y_ind_address[ind]]))
+        
         end = time.time()
         print(end-start)
-        
-        '''for address in self.Y.keys():
-            #Finding maximum assignment cost
-            self.solver.Add(self.w >= self.Y[address] * calculate_distance(address.location, address.facility))
-            #Making sure assignment follow open facilities
-            self.solver.Add(self.Y[address] <= self.X[address.facility])'''
         
         print('Number of constraints =', self.solver.NumConstraints())
     
