@@ -1,7 +1,7 @@
 #%%
 
-%load_ext autoreload
-%autoreload 2
+# %load_ext autoreload
+# %autoreload 2
 
 import random
 import pandas as pd
