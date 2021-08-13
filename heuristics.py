@@ -28,7 +28,7 @@ def independent_LP(k: int, facility_limit: int, client_limit: int):
     
     client_locations = []
     for person in CLIENT_LOCATIONS.values():
-        new_list = [p for p in person['lid'] if p in potential_facility_locations]
+        new_list = [p for p in person if p in potential_facility_locations]
         if len(new_list)>0:
             client_locations.append(new_list)
     
@@ -73,7 +73,7 @@ def integer_LP(k: int, facility_limit: int, client_limit: int):
     
     client_locations = []
     for person in CLIENT_LOCATIONS.values():
-        new_list = [p for p in person['lid'] if p in potential_facility_locations]
+        new_list = [p for p in person if p in potential_facility_locations]
         if len(new_list)>0:
             client_locations.append(new_list)
     
@@ -113,7 +113,7 @@ def dependent_LP(k: int, facility_limit: int, client_limit: int):
     
     client_locations = []
     for person in CLIENT_LOCATIONS.values():
-        new_list = [p for p in person['lid'] if p in potential_facility_locations]
+        new_list = [p for p in person if p in potential_facility_locations]
         if len(new_list)>0:
             client_locations.append(new_list)
     
@@ -162,7 +162,7 @@ def fpt(k: int, s: int):
     #TODO: Perhaps create mapping for the indices of people before exclusion and after?
     client_locations_excluded = []
     for person in CLIENT_LOCATIONS.values():
-        new_list = [p for p in person['lid'][1:] if p in potential_facility_locations]
+        new_list = [p for p in person[1:] if p in potential_facility_locations]
         if len(new_list)>0:
             client_locations_excluded.append(new_list)
     
@@ -210,7 +210,7 @@ def fpt2(k: int, s: int):
     #TODO: Perhaps create mapping for the indices of people before exclusion and after?
     client_locations_excluded = []
     for person in CLIENT_LOCATIONS.values():
-        new_list = [p for p in person['lid'][1:] if p in potential_facility_locations]
+        new_list = [p for p in person[1:] if p in potential_facility_locations]
         if len(new_list)>0:
             client_locations_excluded.append(new_list)
     
@@ -268,7 +268,7 @@ def fpt2_parallel(k: int, s: int, track_progress = False):
     #TODO: Perhaps create mapping for the indices of people before exclusion and after?
     client_locations_excluded = []
     for person in CLIENT_LOCATIONS.values():
-        new_list = [p for p in person['lid'][1:] if p in potential_facility_locations]
+        new_list = [p for p in person[1:] if p in potential_facility_locations]
         if len(new_list)>0:
             client_locations_excluded.append(new_list)
     
@@ -310,7 +310,7 @@ def fpt2_parallel2(k: int, s: int):
     #TODO: Perhaps create mapping for the indices of people before exclusion and after?
     client_locations_excluded = []
     for person in CLIENT_LOCATIONS.values():
-        new_list = [p for p in person['lid'][1:] if p in potential_facility_locations]
+        new_list = [p for p in person[1:] if p in potential_facility_locations]
         if len(new_list)>0:
             client_locations_excluded.append(new_list)
     
@@ -355,12 +355,12 @@ def fpt3_parallel2(k: int, s: int):
     #Remove homes from the client_location lists
     #TODO: Perhaps create mapping for the indices of people before exclusion and after?
     client_locations_excluded = []
-    for person in CLIENT_LOCATIONS.values():
-        new_list = [p for p in person['lid'][1:] if p in potential_facility_locations]
+    for person in CLIENT_LOCATIONS_agg.values():
+        new_list = [p for p in person[1:] if p in potential_facility_locations]
         if len(new_list)>0:
             client_locations_excluded.append(new_list)
     
-    locations = [i for i in range(len(LOCATIONS)) if LOCATIONS[i]['lid'] < HOME_SHIFT]
+    locations = [LOCATIONS_agg[i]['lid'] for i in range(len(LOCATIONS_agg)) if LOCATIONS[LOCATIONS_agg[i]['lid']]['lid'] < HOME_SHIFT]
     
     G, loc_map, c_loc_map = precompute_distances(client_locations_excluded, locations)
     
@@ -394,9 +394,7 @@ def center_of_centers(k: int):
     """
     clients = []
     
-    for client_row in CLIENT_LOCATIONS.values():
-        
-        client = client_row["lid"]
+    for client in CLIENT_LOCATIONS.values():
         
         dispersion = 1e10
         effective_center = -1
@@ -436,9 +434,7 @@ def center_of_centers2(k: int):
     """
     clients = []
     
-    for client_row in CLIENT_LOCATIONS.values():
-        
-        client = client_row["lid"]
+    for client in CLIENT_LOCATIONS.values():
         
         latitude = []
         longitude = []
@@ -449,18 +445,17 @@ def center_of_centers2(k: int):
         
         clients.append((sum(latitude)/len(latitude), sum(longitude)/len(longitude)))
     
-    original_loc_length = len(LOCATIONS.keys())
+    original_loc_length = len(LOCATIONS)
     
     for i in range(len(clients)):
-        LOCATIONS[original_loc_length+i] = {'lid': -1, 'longitude': clients[i][1], 'latitude': clients[i][0], 'activity':-1, 'pid':[i]}
+        LOCATIONS.append({'lid': -1, 'longitude': clients[i][1], 'latitude': clients[i][0], 'activity':-1, 'pid':[i]})
     
     locations = [i for i in range(original_loc_length) if LOCATIONS[i]['lid'] < HOME_SHIFT]
     facilities = _k_supplier(list(range(original_loc_length+ len(clients))), locations, k)
     
-    for i in range(len(clients)):
-        LOCATIONS.pop(original_loc_length+i)
+    del LOCATIONS[original_loc_length: original_loc_length+len(clients)]
     
-    print(len(LOCATIONS.keys()))
+    print(len(LOCATIONS))
     
     return facilities, assign_facilities(facilities)
 
@@ -480,8 +475,8 @@ def center_of_homes(k: int):
     assignments : List[Tuple[int, int]]
         visited location and facility assignment indexed by each client
     """
-    potential_facility_locations = [key for key in LOCATIONS.keys() if LOCATIONS[key]['lid'] < HOME_SHIFT]
-    homes = set(locs['lid'][0] for locs in CLIENT_LOCATIONS.values())
+    potential_facility_locations = [key for key in range(len(LOCATIONS)) if LOCATIONS[key]['lid'] < HOME_SHIFT]
+    homes = set(locs[0] for locs in CLIENT_LOCATIONS.values())
     
     facilities = _k_supplier(list(homes), potential_facility_locations, k)
     
