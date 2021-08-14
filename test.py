@@ -87,18 +87,45 @@ def test_function(k:int, s:int):
     print(X_fpt)
     print("Recalculated Objective Value: \t" + str(calculate_objective(Y_fpt)))
 
-def fpt_experiments(k: int, s: int):
-    X_fpt, Y_fpt = fpt3_parallel2(k, s)
+"""
+FPT performance w.r.t. different k,s combinations
+"""
+def fpt_sensitivity_experiments(k_lim: int, s_lim: int, aggregation: int = 1):
+    
+    data = {}
+    for k in range(5, k_lim+1):
+        for s in range(10, s_lim+1, 5):
+            X_fpt, Y_fpt = fpt3_parallel2(k, s, aggregation)
+            obj_value = calculate_objective(Y_fpt)
+            
+            data[str((k, s))] = {"facilities": X_fpt[1], "assignments": Y_fpt, "obj_value": obj_value}
+            print(k, s, X_fpt, obj_value)
+    
+    filename = f"fpt_exp_sensitivity_{aggregation}.json"
+    with open(filename, 'w') as f:
+        json.dump(data, f)
+
+"""
+Compare fpt performance on different versions of aggregation
+(Not yet completed since aggregation versions aren't clear yet)
+"""
+def fpt_version_experiments(k: int, s: int):
+    
+    data = {}
+    
+    X_fpt, Y_fpt = fpt3_parallel2(k, s, 2)
     obj_value = calculate_objective(Y_fpt)
+    data["Repeats"] = {"k": k, "s": s, "facilities": X_fpt, "assignments": Y_fpt, "obj_value": obj_value}
+    print(k, s, X_fpt, obj_value)
     
-    data = {"k": k, "s": s, "facilities": X_fpt, "assignments": Y_fpt, "obj_value": obj_value}
+    X_fpt, Y_fpt = fpt3_parallel2(k, s, 1)
+    obj_value = calculate_objective(Y_fpt)
+    data["No_Repeats"] = {"k": k, "s": s, "facilities": X_fpt, "assignments": Y_fpt, "obj_value": obj_value}
+    print(k, s, X_fpt, obj_value)
     
-    #filename = "fpt_exp" + "_" + str(s) + "2.json"
-    #with open(filename, 'w') as f:
-    #    json.dump(data, f)
-    
-    print(X_fpt)
-    print("Recalculated Objective Value: \t" + str(obj_value))
+    filename = "fpt_exp_version.json"
+    with open(filename, 'w') as f:
+        json.dump(data, f)
 
 def center_of_centers_experiments(k: int):
     facilities, assignments = center_of_centers2(k)
@@ -160,10 +187,10 @@ def center_of_centers_experiments(k: int):
     
     return G'''
 
-#fpt_experiments(5, 20)
+fpt_sensitivity_experiments(7, 20, 0)
 #test_function(5, 30)
 #center_of_centers_experiments(5)
 
-X_ind, Y_ind = integer_LP(5, 10, 10)
+"""X_ind, Y_ind = integer_LP(5, 10, 10)
 print(X_ind)
-print("Recalculated Objective Value: \t" + str(calculate_objective(Y_ind)))
+print("Recalculated Objective Value: \t" + str(calculate_objective(Y_ind)))"""

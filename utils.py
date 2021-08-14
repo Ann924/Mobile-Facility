@@ -1,7 +1,7 @@
 from typing import Dict, List, Tuple, Set
 import random
 import math
-from config import LOCATIONS, CLIENT_LOCATIONS, LOCATIONS_agg, CLIENT_LOCATIONS_agg, HOME_SHIFT, address
+from config import LOCATIONS, CLIENT_LOCATIONS, HOME_SHIFT, address
 import geopy.distance
 from itertools import chain, combinations
 
@@ -13,18 +13,24 @@ def powerset(iterable):
     s = list(iterable)
     return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
 
-def cover_most(s: int):
+def cover_most(s: int, LOCATIONS_fpt, CLIENT_LOCATIONS_fpt):
     """
     Helper method for FPT: returns the set of activity locations of size s that cover the most clients
     Used with aggregate activity locations
+    
+    aggregation : int
+    the version of aggregation selected
+    0 --> none
+    1 --> set cover: aggregation with repeats in coverage
     """
+    
     covered = set()
     selected = []
     for i in range(s):
-        most_coverage = max([(len(set(LOCATIONS_agg[l]['pid']) - covered), l, LOCATIONS_agg[l]['lid']) for l in range(len(LOCATIONS_agg))])
+        most_coverage = max([(len(set(LOCATIONS_fpt[l]['pid']) - covered), l, LOCATIONS_fpt[l]['lid_ind']) for l in range(len(LOCATIONS_fpt))])
         selected.append(most_coverage[2])
-        covered = covered.union(LOCATIONS_agg[most_coverage[1]]['pid'])
-    print(len(covered)/len(CLIENT_LOCATIONS_agg.keys()))
+        covered = covered.union(LOCATIONS_fpt[most_coverage[1]]['pid'])
+    print(f"COVERAGE OF CLIENTS BY {s} LOCATIONS: ", len(covered)/len(CLIENT_LOCATIONS_fpt.keys()))
     return selected
 
 def calculate_distance(loc1: int, loc2: int):
@@ -96,6 +102,7 @@ def precompute_distances(client_locations: List[List[int]], locations: List[int]
         print(["{:.2f}".format(i) for i in row])'''
     return G, loc_map, c_loc_map
 
+#OUTDATED
 def assign_client_facilities(client_locations: List[List[int]], facilities: List[int]):
     """
     Assigns clients to their nearest facility from one of their visited locations.
