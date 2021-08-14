@@ -3,7 +3,7 @@ from typing import Dict, List, Tuple, Set
 from problem import *
 from round import *
 from utils import *
-from config import LOCATIONS, CLIENT_LOCATIONS, HOME_SHIFT
+from config import LOCATIONS, CLIENT_LOCATIONS, HOME_SHIFT, aggregate_data
 import time
 import ray
 from joblib import Parallel, delayed
@@ -139,6 +139,7 @@ def dependent_LP(k: int, facility_limit: int, client_limit: int):
     
     return facilities, assignments
 
+#Outdated
 def fpt(k: int, s: int):
     """
     Assumes the number of locations visited by clients is bounded by a constant
@@ -187,6 +188,7 @@ def fpt(k: int, s: int):
         print(count, obj_value, end-start)
     return min_obj_guess[1], assign_facilities(min_obj_guess[1])
 
+#Outdated
 def fpt2(k: int, s: int):
     """
     Assumes the number of locations visited by clients is bounded by a constant
@@ -241,6 +243,7 @@ def fpt2(k: int, s: int):
         print(count, obj_value, end-start)
     return min_obj_guess[1], assign_facilities(min_obj_guess[1])
 
+#Outdated
 def fpt2_parallel(k: int, s: int, track_progress = False):
     """
     Assumes the number of locations visited by clients is bounded by a constant
@@ -287,8 +290,9 @@ def fpt2_parallel(k: int, s: int, track_progress = False):
     min_obj_guess: Tuple[int, List[int]] = min(results)
     return min_obj_guess, assign_facilities(min_obj_guess[1])
 
-def fpt2_parallel2(k: int, s: int):
+def fpt2_parallel2(k: int, s: int, aggregation: int):
     """
+    Picks the s most popular activity locations
     Assumes the number of locations visited by clients is bounded by a constant
     Run k-supplier on all combination sets of locations that will be covered by facilities. Select the guess and its open facilities with the smallest objective value.
     
@@ -304,7 +308,7 @@ def fpt2_parallel2(k: int, s: int):
     assignments : List[Tuple[int, int]]
         visited location and facility assignment indexed by each client
     """
-    potential_facility_locations = list(range(s))
+    """potential_facility_locations = list(range(s))
     
     #Remove homes from the client_location lists
     #TODO: Perhaps create mapping for the indices of people before exclusion and after?
@@ -316,7 +320,21 @@ def fpt2_parallel2(k: int, s: int):
     
     locations = [i for i in range(len(LOCATIONS)) if LOCATIONS[i]['lid'] < HOME_SHIFT]
     
-    G, loc_map, c_loc_map = precompute_distances(client_locations_excluded, locations)
+    G, loc_map, c_loc_map = precompute_distances(client_locations_excluded, locations)"""
+    
+    LOCATIONS_fpt, CLIENT_LOCATIONS_fpt = aggregate_data(aggregation)
+    
+    potential_facility_locations = [LOCATIONS_fpt[i]['lid_ind'] for i in range(s)]
+    
+    #Remove homes from the client_location lists
+    #TODO: Perhaps create mapping for the indices of people before exclusion and after?
+    client_locations_excluded = []
+    for person in CLIENT_LOCATIONS_fpt.values():
+        new_list = [p for p in person[1:] if p in potential_facility_locations]
+        if len(new_list)>0:
+            client_locations_excluded.append(new_list)
+    
+    locations = [LOCATIONS_fpt[i]['lid_ind'] for i in range(len(LOCATIONS_fpt)) if LOCATIONS[LOCATIONS_fpt[i]['lid_ind']]['lid'] < HOME_SHIFT]
     
     ray.init(ignore_reinit_error=True)
     
@@ -333,8 +351,9 @@ def fpt2_parallel2(k: int, s: int):
     min_obj_guess: Tuple[int, List[int]] = min(results)
     return min_obj_guess, assign_facilities(min_obj_guess[1])
 
-def fpt3_parallel2(k: int, s: int):
+def fpt3_parallel2(k: int, s: int, aggregation: int):
     """
+    Picks the s activity locations that cover the most clients
     Assumes the number of locations visited by clients is bounded by a constant
     Run k-supplier on all combination sets of locations that will be covered by facilities. Select the guess and its open facilities with the smallest objective value.
     
@@ -342,7 +361,14 @@ def fpt3_parallel2(k: int, s: int):
     ----------
     k : int
         number of facilities to be opened
-    
+    s : int
+        number of activity locations examined
+    aggregation : int
+        the version of aggregation selected
+        0 --> none
+        1 --> set cover: aggregation without repeats in coverage
+        2 --> set cover: aggregation with repeats in coverage
+        
     RETURNS
     ----------
     facilities : List[int]
@@ -350,17 +376,20 @@ def fpt3_parallel2(k: int, s: int):
     assignments : List[Tuple[int, int]]
         visited location and facility assignment indexed by each client
     """
-    potential_facility_locations = cover_most(s)
+    
+    LOCATIONS_fpt, CLIENT_LOCATIONS_fpt = aggregate_data(aggregation)
+    
+    potential_facility_locations = cover_most(s, LOCATIONS_fpt, CLIENT_LOCATIONS_fpt)
     
     #Remove homes from the client_location lists
     #TODO: Perhaps create mapping for the indices of people before exclusion and after?
     client_locations_excluded = []
-    for person in CLIENT_LOCATIONS_agg.values():
+    for person in CLIENT_LOCATIONS_fpt.values():
         new_list = [p for p in person[1:] if p in potential_facility_locations]
         if len(new_list)>0:
             client_locations_excluded.append(new_list)
     
-    locations = [LOCATIONS_agg[i]['lid'] for i in range(len(LOCATIONS_agg)) if LOCATIONS[LOCATIONS_agg[i]['lid']]['lid'] < HOME_SHIFT]
+    locations = [LOCATIONS_fpt[i]['lid_ind'] for i in range(len(LOCATIONS_fpt)) if LOCATIONS_fpt[i]['lid'] < HOME_SHIFT]
     
     G, loc_map, c_loc_map = precompute_distances(client_locations_excluded, locations)
     
@@ -448,7 +477,7 @@ def center_of_centers2(k: int):
     original_loc_length = len(LOCATIONS)
     
     for i in range(len(clients)):
-        LOCATIONS.append({'lid': -1, 'longitude': clients[i][1], 'latitude': clients[i][0], 'activity':-1, 'pid':[i]})
+        LOCATIONS.append({'lid_ind': i+original_loc_length, 'lid': -1, 'longitude': clients[i][1], 'latitude': clients[i][0], 'activity':-1, 'pid':[i]})
     
     locations = [i for i in range(original_loc_length) if LOCATIONS[i]['lid'] < HOME_SHIFT]
     facilities = _k_supplier(list(range(original_loc_length+ len(clients))), locations, k)
