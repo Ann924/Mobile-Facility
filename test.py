@@ -127,6 +127,17 @@ def fpt_version_experiments(k: int, s: int):
     with open(filename, 'w') as f:
         json.dump(data, f)
 
+def single_fpt_run(k: int, s: int, aggregation: int):
+    facilities, assignments = fpt3_parallel2(k, s, aggregation)
+    print(facilities)
+    obj_value = calculate_objective(assignments)
+    print(obj_value)
+    
+    filename = f"fpt_{k}_{s}_{aggregation}.json"
+    data = {"k": k, "s": s, "facilities": facilities, "assignments": assignments, "obj_value": obj_value}
+    with open(filename, 'w') as f:
+        json.dump(data, f)
+
 def center_of_centers_experiments(k: int):
     facilities, assignments = center_of_centers2(k)
     print(facilities)
@@ -187,10 +198,11 @@ def center_of_centers_experiments(k: int):
     
     return G'''
 
-fpt_sensitivity_experiments(7, 20, 0)
+#fpt_sensitivity_experiments(7, 20, 2)
 #test_function(5, 30)
 #center_of_centers_experiments(5)
 
 """X_ind, Y_ind = integer_LP(5, 10, 10)
 print(X_ind)
 print("Recalculated Objective Value: \t" + str(calculate_objective(Y_ind)))"""
+single_fpt_run(6, 25, 1)

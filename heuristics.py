@@ -308,19 +308,6 @@ def fpt2_parallel2(k: int, s: int, aggregation: int):
     assignments : List[Tuple[int, int]]
         visited location and facility assignment indexed by each client
     """
-    """potential_facility_locations = list(range(s))
-    
-    #Remove homes from the client_location lists
-    #TODO: Perhaps create mapping for the indices of people before exclusion and after?
-    client_locations_excluded = []
-    for person in CLIENT_LOCATIONS.values():
-        new_list = [p for p in person[1:] if p in potential_facility_locations]
-        if len(new_list)>0:
-            client_locations_excluded.append(new_list)
-    
-    locations = [i for i in range(len(LOCATIONS)) if LOCATIONS[i]['lid'] < HOME_SHIFT]
-    
-    G, loc_map, c_loc_map = precompute_distances(client_locations_excluded, locations)"""
     
     LOCATIONS_fpt, CLIENT_LOCATIONS_fpt = aggregate_data(aggregation)
     
@@ -334,7 +321,9 @@ def fpt2_parallel2(k: int, s: int, aggregation: int):
         if len(new_list)>0:
             client_locations_excluded.append(new_list)
     
-    locations = [LOCATIONS_fpt[i]['lid_ind'] for i in range(len(LOCATIONS_fpt)) if LOCATIONS[LOCATIONS_fpt[i]['lid_ind']]['lid'] < HOME_SHIFT]
+    locations = [LOCATIONS_fpt[i]['lid_ind'] for i in range(len(LOCATIONS_fpt)) if LOCATIONS_fpt[i]['lid'] < HOME_SHIFT]
+    
+    G, loc_map, c_loc_map = precompute_distances(client_locations_excluded, locations)
     
     ray.init(ignore_reinit_error=True)
     
@@ -349,11 +338,12 @@ def fpt2_parallel2(k: int, s: int, aggregation: int):
     results = ray.get(futures)
 
     min_obj_guess: Tuple[int, List[int]] = min(results)
+    
     return min_obj_guess, assign_facilities(min_obj_guess[1])
 
 def fpt3_parallel2(k: int, s: int, aggregation: int):
     """
-    Picks the s activity locations that cover the most clients
+    Picks the s activity locations that cover the most clients (through a set cover approximation)
     Assumes the number of locations visited by clients is bounded by a constant
     Run k-supplier on all combination sets of locations that will be covered by facilities. Select the guess and its open facilities with the smallest objective value.
     
@@ -634,4 +624,5 @@ def _locate_facilities(radius: int, pairwise_disjoint: Set[int], locations: List
     return list(facilities)
 
 def most_populous(k: int):
+    
     return list(range(k)), assign_facilities(list(range(k)))
