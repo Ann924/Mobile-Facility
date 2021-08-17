@@ -1,7 +1,7 @@
 from typing import Dict, List, Tuple, Set
 import random
 import math
-from config import LOCATIONS, CLIENT_LOCATIONS, HOME_SHIFT, address
+from config import LOCATIONS, CLIENT_LOCATIONS, LOCATIONS_agg, CLIENT_LOCATIONS_agg, HOME_SHIFT, address
 import geopy.distance
 from itertools import chain, combinations
 
@@ -16,14 +16,15 @@ def powerset(iterable):
 def cover_most(s: int):
     """
     Helper method for FPT: returns the set of activity locations of size s that cover the most clients
+    Used with aggregate activity locations
     """
     covered = set()
     selected = []
     for i in range(s):
-        most_coverage = max([(len(set(LOCATIONS[l]['pid']) - covered), l) for l in LOCATIONS.keys()])
-        selected.append(most_coverage[1])
-        covered = covered.union(LOCATIONS[most_coverage[1]]['pid'])
-    print(len(covered)/len(CLIENT_LOCATIONS))
+        most_coverage = max([(len(set(LOCATIONS_agg[l]['pid']) - covered), l, LOCATIONS_agg[l]['lid']) for l in range(len(LOCATIONS_agg))])
+        selected.append(most_coverage[2])
+        covered = covered.union(LOCATIONS_agg[most_coverage[1]]['pid'])
+    print(len(covered)/len(CLIENT_LOCATIONS_agg.keys()))
     return selected
 
 def calculate_distance(loc1: int, loc2: int):
@@ -60,7 +61,7 @@ def assign_facilities(facilities: List[int]):
     assignments: List[Tuple[int, int]] = []
     
     for key in CLIENT_LOCATIONS.keys():
-        possible_assignments = [(calculate_distance(loc, fac), loc, fac) for loc in CLIENT_LOCATIONS[key]['lid'] for fac in facilities]
+        possible_assignments = [(calculate_distance(loc, fac), loc, fac) for loc in CLIENT_LOCATIONS[key] for fac in facilities]
         
         min_loc = min(possible_assignments)
         assignments.append((min_loc[1], min_loc[2]))
