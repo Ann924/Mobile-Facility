@@ -65,7 +65,7 @@ HOME_SHIFT=1000000000
     assignments['activity'] = assignments['pid'].apply(lambda x: len(x))
 
     locations['activity'] = locations['lid'].apply(lambda x: assignments.at[x, 'activity'] if x in assignments.index else 0)
-    #locations['pid'] = locations['lid'].apply(lambda x: assignments.at[x, 'pid'] if x in assignments.index else {})
+    #locations['pid'] = locations['lid'].applyg(lambda x: assignments.at[x, 'pid'] if x in assignments.index else {})
     locations = locations.sort_values(by = 'activity', ascending = False).reset_index(drop = True)
 
     client_locations = client_locations.groupby(['pid'])['lid'].apply(set).reset_index(name = 'lid')
@@ -173,7 +173,11 @@ def radius_cover(radius: float):
         
         for j in range(len(LOCATIONS_act)):
             loc2 = LOCATIONS_act[j][0]
-            dist = calculate_distance(loc1, loc2)
+            
+            coord_1 = (LOCATIONS[loc1]['latitude'], LOCATIONS[loc1]['longitude'])
+            coord_2 = (LOCATIONS[loc2]['latitude'], LOCATIONS[loc2]['longitude'])
+            
+            dist = geopy.distance.great_circle(coord_1, coord_2).km
             
             if dist < radius:
                 radius_dict[loc1].append(loc2)
@@ -353,8 +357,6 @@ def single_linkage_aggregation(radius: float = 0.02):
 def single_linkage_aggregation2(radius: float = 0.02):
     """
     Must be run after LOCATIONS and CLIENT_LOCATIONS are read in
-    
-    
     Returns aggregated versions of LOCATIONS and CLIENT_LOCATIONS with single linkage clustering
     """
     
