@@ -501,6 +501,32 @@ def center_of_homes(k: int):
     
     return facilities, assign_facilities(facilities)
 
+def center_of_homes_agg(k: int, aggregation: int):
+    """
+    Opens facilities based only on home-locations
+    
+    PARAMETERS
+    ----------
+    k : int
+        number of facilities to be opened
+    
+    RETURNS
+    ----------
+    facilities : List[int]
+        contains facility indices that are open
+    assignments : List[Tuple[int, int]]
+        visited location and facility assignment indexed by each client
+    """
+    
+    LOCATIONS_home, CLIENT_LOCATIONS_home = aggregate_data(aggregation)
+    
+    potential_facility_locations = [LOCATIONS_home[key]['lid_ind'] for key in range(len(LOCATIONS_home)) if LOCATIONS_home[key]['lid'] < HOME_SHIFT]
+    homes = set(locs[0] for locs in CLIENT_LOCATIONS_home.values())
+    
+    facilities = _k_supplier(list(homes), potential_facility_locations, k)
+    
+    return facilities, assign_facilities(facilities)
+
 def _k_supplier(clients: List[int], locations: List[int], k: int):
     """
     Solves k-supplier (where client locations and facility locations may not overlap) with Hochbaum-Shmoys
@@ -624,5 +650,10 @@ def _locate_facilities(radius: int, pairwise_disjoint: Set[int], locations: List
     return list(facilities)
 
 def most_populous(k: int):
+    return list(range(k)), assign_facilities
     
-    return list(range(k)), assign_facilities(list(range(k)))
+def most_populous_agg(k: int, aggregation: int):
+    LOCATIONS_agg, CLIENT_LOCATIONS_agg = aggregate_data(aggregation)
+    
+    facilities = [LOCATIONS_agg[i]['lid_ind'] for i in range(k)]
+    return facilities, assign_facilities(facilities)
