@@ -93,9 +93,9 @@ def fpt_experiments(k: int, s: int):
     
     data = {"k": k, "s": s, "facilities": X_fpt, "assignments": Y_fpt, "obj_value": obj_value}
     
-    filename = "fpt_exp" + "_" + str(s) + "2.json"
-    with open(filename, 'w') as f:
-        json.dump(data, f)
+    #filename = "fpt_exp" + "_" + str(s) + "2.json"
+    #with open(filename, 'w') as f:
+    #    json.dump(data, f)
     
     print(X_fpt)
     print("Recalculated Objective Value: \t" + str(obj_value))
@@ -160,6 +160,10 @@ def center_of_centers_experiments(k: int):
     
     return G'''
 
-#fpt_experiments(5, 25)
+#fpt_experiments(5, 20)
 #test_function(5, 30)
-center_of_centers_experiments(5)
+#center_of_centers_experiments(5)
+
+X_ind, Y_ind = integer_LP(5, 10, 10)
+print(X_ind)
+print("Recalculated Objective Value: \t" + str(calculate_objective(Y_ind)))
