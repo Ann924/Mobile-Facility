@@ -1,3 +1,2 @@
 *.csv filter=lfs diff=lfs merge=lfs -text
-*.ipynb filter=lfs diff=lfs merge=lfs -text
 Ann_Data.ipynb filter=lfs diff=lfs merge=lfs -text
