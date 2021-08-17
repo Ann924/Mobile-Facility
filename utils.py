@@ -30,6 +30,9 @@ def calculate_distance(loc1: int, loc2: int):
     """
     Calculates the haversine distance between two location indices
     """
+    if loc1 == loc2:
+        return 0
+    
     coord1_row = LOCATIONS[loc1]
     coord2_row = LOCATIONS[loc2]
     coord1 = (coord1_row['latitude'], coord1_row['longitude'])
