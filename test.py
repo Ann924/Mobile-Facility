@@ -138,6 +138,9 @@ def single_fpt_run(k: int, s: int, aggregation: int):
     with open(filename, 'w') as f:
         json.dump(data, f)
 
+"""
+What happens when we pick different centers for clients?
+"""
 def center_of_centers_experiments(k: int):
     facilities, assignments = center_of_centers2(k)
     print(facilities)
@@ -149,60 +152,34 @@ def center_of_centers_experiments(k: int):
     print(len(LOCATIONS))
     print(calculate_objective(assignments))
 
-#NOT USED
-'''def test_line(number_of_points:int, distance_range:Tuple[float, float]) -> List[List[float]]:
-    """
-    number_of_points > 0
-    """
-    G = []
-    for k in range(number_of_points-1, -1, -1):
-        G.append([])
-        dist_from_previous = (distance_range[1]-distance_range[0])*random.random() + distance_range[0]
-        for i in range(number_of_points-k-1):
-            #add up distances somehow
-            G[-1].append(dist_from_previous + G[-2][i])
-        G[-1].append(0)
+"""
+Runs all the heuristics we have (excluding LPs)
+"""
+def run_all_heuristics(k: int, s: int, aggregation: int = 0):
     
-    return G'''
-#NOT USED
-'''def generate_random_input(number_of_points:int, distance_range: Tuple[float, float]) -> List[List[float]]:
-    """
-    number_of_points > 0
-    distance_range --> [lower-bound, upper-bound]
+    fac_home, assign_home = center_of_homes_agg(k, aggregation)
+    print("CENTER OF HOMES : ", fac_home)
+    print(calculate_objective(assign_home))
     
-    Creates and fills in the adjacency matrix (G) of parametrized number of locations with random float distances in inputted range
-    """
+    fac_center, assign_center = center_of_centers_agg(k, aggregation)
+    print("CENTER OF CENTERS : ", fac_center)
+    print(calculate_objective(assign_center))
     
-    poi_count = number_of_points
-    G = [[(distance_range[1]-distance_range[0])*random.random()+distance_range[0]
-          for i in range(poi_count-k)] for k in range(poi_count-1, -1, -1)]
+    fac_pop, assign_pop = most_populous_agg(k, aggregation)
+    print("MOST POPULAR : ", fac_pop)
+    print(calculate_objective(assign_pop))
     
-    for row in G:
-        row[-1] = 0
+    fac_coverage, assign_coverage = most_coverage_agg(k, aggregation)
+    print("MOST COVERAGE : ", fac_coverage)
+    print(calculate_objective(assign_coverage))
     
-    return G'''
-#NOT USED
-'''def generate_2D_input(number_of_points:int, x_coordinate_range: Tuple[float, float], y_coordinate_range: Tuple[float, float]) -> List[List[float]]:
+    fac_fpt, assign_fpt = fpt3_parallel2(k, s, aggregation)
+    print("FPT : ", fac_fpt)
+    print(calculate_objective(assign_fpt))
     
-    points = [(random.random()*(x_coordinate_range[1]-x_coordinate_range[0]) + x_coordinate_range[0], random.random()*(y_coordinate_range[1]-y_coordinate_range[0]) + y_coordinate_range[0]) for i in range(number_of_points)]
-    #print(points)
-    G = []
-    for r in range(number_of_points):
-        G.append([])
-        for c in range(r):
-            loc0 = points[r]
-            loc1 = points[c]
-            distance = ((loc0[0]-loc1[0])**2 + (loc0[1]-loc1[1])**2)**(1/2)
-            G[-1].append(distance)
-        G[-1].append(0)
     
-    return G'''
-
-#fpt_sensitivity_experiments(7, 20, 2)
-#test_function(5, 30)
-#center_of_centers_experiments(5)
-
 """X_ind, Y_ind = integer_LP(5, 10, 10)
 print(X_ind)
 print("Recalculated Objective Value: \t" + str(calculate_objective(Y_ind)))"""
-single_fpt_run(6, 25, 1)
+run_all_heuristics(5, 10, 2)
+#single_fpt_run(6, 25, 1)

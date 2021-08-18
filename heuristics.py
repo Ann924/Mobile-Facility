@@ -478,6 +478,48 @@ def center_of_centers2(k: int):
     
     return facilities, assign_facilities(facilities)
 
+def center_of_centers_agg(k: int, aggregation: int):
+    """
+    PARAMETERS
+    ----------
+    k : int
+        number of facilities to be opened
+    
+    RETURNS
+    ----------
+    facilities : List[int]
+        contains facility indices that are open
+    assignments : List[Tuple[int, int]]
+        visited location and facility assignment indexed by each client
+    """
+    
+    LOCATIONS_center, CLIENT_LOCATIONS_center = aggregate_data(aggregation)
+    
+    clients = []
+    
+    for client in CLIENT_LOCATIONS_center.values():
+        
+        dispersion = 1e10
+        effective_center = -1
+        
+        for center in client:
+            
+            max_dist = 0
+            
+            for loc in client:
+                max_dist = max(calculate_distance(center, loc), max_dist)
+                
+            if max_dist < dispersion:
+                dispersion = max_dist
+                effective_center = center
+                
+        clients.append(effective_center)
+        
+    locations = [LOCATIONS_center[i]['lid_ind'] for i in range(len(LOCATIONS_center)) if LOCATIONS_center[i]['lid'] < HOME_SHIFT]
+    facilities = _k_supplier(clients, locations, k)
+    
+    return facilities, assign_facilities(facilities)
+
 def center_of_homes(k: int):
     """
     Opens facilities based only on home-locations
@@ -651,7 +693,16 @@ def _locate_facilities(radius: int, pairwise_disjoint: Set[int], locations: List
 
 def most_populous(k: int):
     return list(range(k)), assign_facilities(list(range(k)))
+<<<<<<< HEAD
+=======
+
+def most_coverage_agg(k: int, aggregation: int):
+    LOCATIONS_agg, CLIENT_LOCATIONS_agg = aggregate_data(aggregation)
+>>>>>>> 8ae45e9b6432304de8fd7e4432cda3dcd8615ac1
     
+    facilities = cover_most(k, LOCATIONS_agg, CLIENT_LOCATIONS_agg)
+    return facilities, assign_facilities(facilities)
+
 def most_populous_agg(k: int, aggregation: int):
     LOCATIONS_agg, CLIENT_LOCATIONS_agg = aggregate_data(aggregation)
     
