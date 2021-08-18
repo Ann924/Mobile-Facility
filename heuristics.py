@@ -650,7 +650,7 @@ def _locate_facilities(radius: int, pairwise_disjoint: Set[int], locations: List
     return list(facilities)
 
 def most_populous(k: int):
-    return list(range(k)), assign_facilities
+    return list(range(k)), assign_facilities(list(range(k)))
     
 def most_populous_agg(k: int, aggregation: int):
     LOCATIONS_agg, CLIENT_LOCATIONS_agg = aggregate_data(aggregation)
