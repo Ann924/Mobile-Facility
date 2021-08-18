@@ -133,11 +133,13 @@ def create_data_input2():
     client_locations['lid'] = client_locations['lid'].apply(lambda x: filter(x))
 
     return locations.to_dict('index'), client_locations.to_dict('index')
+
 def write_data_input():
     with open('data2.json', 'w') as f:
         LOCATIONS, CLIENT_LOCATIONS = create_data_input2()
         data = {"LOCATIONS": LOCATIONS, "CLIENT_LOCATIONS": CLIENT_LOCATIONS}
         json.dump(data, f)
+
 def read_data_input(filename):
     file = open(filename, 'r')
     data = json.load(file)
@@ -353,7 +355,12 @@ def single_linkage_aggregation(radius: float = 0.02):
     
     return LOCATIONS_agg, CLIENT_LOCATIONS_agg
 
-#TODO: change datastructures
+"""
+1) Represent each aid by the loc closest to median
+2) Represent each aid by the loc that's least far from all other locs
+3) Represent each aid by most popular loc
+"""
+
 def single_linkage_aggregation2(radius: float = 0.02):
     """
     Must be run after LOCATIONS and CLIENT_LOCATIONS are read in
@@ -381,7 +388,7 @@ def single_linkage_aggregation2(radius: float = 0.02):
         
         if AID_LOC[i]['aid'] >= HOME_SHIFT:
             new_dict = {}
-            new_dict["lid_ind"] = AID_LOC[i]['aid']
+            new_dict["lid_ind"] = lid_to_ind[AID_LOC[i]['aid']]
             new_dict["lid"] = AID_LOC[i]['aid']
             new_dict["longitude"] = AID_LOC[i]['longitude']
             new_dict["latitude"] = AID_LOC[i]['latitude']
@@ -392,22 +399,46 @@ def single_linkage_aggregation2(radius: float = 0.02):
             ind_to_aid[lid_to_ind[AID_LOC[i]['aid']]] = i
         
         else:
+            
+            members_list = [lid_to_ind[m] for m in AID_LOC[i]['members']]
+            
+            min_dist = (10**9, -1, -1)
+            
+            for m in members_list:
+                
+                distance_list = []
+                
+                for b in members_list:
+                        
+                        coord1_row = LOCATIONS[m]
+                        coord2_row = LOCATIONS[b]
+                        
+                        coord1 = (coord1_row['latitude'], coord1_row['longitude'])
+                        coord2 = (coord2_row['latitude'], coord2_row['longitude'])
+                        
+                        dist = geopy.distance.great_circle(coord1, coord2).km
+                        
+                        distance_list.append((dist, m, b))
+                
+                dispersion = max(distance_list)
+                if dispersion[0]<min_dist[0]:
+                    min_dist = dispersion
+            
+            
             #lids of new aggregated locations are set to be negative
             new_dict = {}
-            new_dict["lid_ind"] = AID_LOC[i]['aid']
-            new_dict["lid"] = -1 * (count+1)
+            new_dict["lid_ind"] = min_dist[1]
+            new_dict["lid"] = LOCATIONS[min_dist[1]]['lid']
             new_dict["longitude"] = AID_LOC[i]['longitude']
             new_dict["latitude"] = AID_LOC[i]['latitude']
             new_dict["members"] = [lid_to_ind[m] for m in AID_LOC[i]['members']]
             new_dict["activity"] = AID_LOC[i]["activity"]
             new_dict["pid"] = AID_LOC[i]["visitors"]
             
-            ind_to_aid[original_loc_length + count] = i
+            ind_to_aid[new_dict["lid_ind"]] = i
             
             count+=1
             
-            LOCATIONS.append(new_dict)
-        
         LOCATIONS_agg.append(new_dict)
     
     CLIENT_LOCATIONS_agg = {}
@@ -429,9 +460,10 @@ def aggregate_data(aggregation: int = 1, radius: float = 0.01):
         1 : set cover aggregation
         2 : single linkage aggregation
     """
+    
     if aggregation == 2:
-        
-        return single_linkage_aggregation()
+        print("NOT IMPLEMENTED")
+        return single_linkage_aggregation2()
         
     elif aggregation == 1:
         
@@ -443,8 +475,3 @@ def aggregate_data(aggregation: int = 1, radius: float = 0.01):
     else:
         
         return LOCATIONS, CLIENT_LOCATIONS
-
-
-def reverse_aggregation(aggreation: int, original_loc_length: int):
-    if aggregation == 2:
-        del LOCATIONS[original_loc_length:]
