@@ -11,7 +11,7 @@ from joblib import Parallel, delayed
 # TODO: standardize input structure (especially client_locations)
 # TODO: A LOT OF THINGS
 
-def fpt3_parallel2(k: int, s: int, aggregation: int):
+def fpt(k: int, s: int, aggregation: int = 0):
     """
     Picks the s activity locations that cover the most clients (through a set cover approximation)
     Assumes the number of locations visited by clients is bounded by a constant
@@ -176,128 +176,6 @@ def center_of_homes(k: int, aggregation: int = 0):
     facilities = _k_supplier(list(homes), potential_facility_locations, k)
     
     return facilities, assign_facilities(facilities)
-
-def _k_supplier(clients: List[int], locations: List[int], k: int):
-    """
-    Solves k-supplier (where client locations and facility locations may not overlap) with Hochbaum-Shmoys
-    3-approximation algorithm
-    
-    PARAMETERS
-    ----------
-    distance
-        diagonally-filled adjacency matrix for distances between locations
-    clients
-        each client is associated with a singular location
-    locations
-        points of interest at which facilities can be opened
-    k
-        number of facilities to be opened
-    
-    RETURNS
-    ----------
-    facilities : List[int]
-        the facility locations that are open
-    """
-    l = 0
-    #r = 40075
-    r=100
-    to_ret = -1
-    #EPSILON = 10**(-6)
-    EPSILON = 10**(-4)
-    
-    while r-l > EPSILON:
-    
-        mid = l + (r - l) / 2
-
-        if len(_check_radius(mid, clients)) <= k:
-            facilities: List[int] = _locate_facilities(mid,
-                                    _check_radius(mid, clients), locations, k)
-            if facilities:
-                to_ret = mid
-                r = mid
-            else:
-                l = mid
-        else:
-            l = mid
-    
-    return _locate_facilities(to_ret,_check_radius(to_ret, clients), locations, k)
-
-def _check_radius(radius: int, clients: List[int]):
-    """Determine the maximal independent set of pairiwse independent client balls with given radius
-    
-    PARAMETERS
-    ----------
-    radius
-        from the binary search
-    distances
-        diagonally-filled adjacency matrix for distances between locations
-    clients
-        each client is associated with a singular location
-    
-    RETURNS
-    ----------
-    pairwise_disjoint
-        maximal independent pairwise disjoint set of clients, where disjoint is defined as greater than a distance
-        of 2*radius apart
-    """
-    
-    pairwise_disjoint = set()
-    
-    V = set(clients)
-    while len(V)!=0:
-        v = V.pop()
-        pairwise_disjoint.add(v)
-        
-        remove = set()
-        for i in V:
-            if calculate_distance(v, i) <= 2*radius:
-                remove.add(i)
-        V-=remove
-    
-    return pairwise_disjoint
-
-def _locate_facilities(radius: int, pairwise_disjoint: Set[int], locations: List[int], k: int):
-    """Select a facility to open within the given radius for each pairwise_disjoint client
-    
-    PARAMETERS
-    ----------
-    radius
-        from the binary search
-    distances
-        diagonally-filled adjacency matrix for distances between locations
-    pairwise_disjoint
-        clients that are not within a distance of 2*radius from one another
-    locations
-        points of interest where facilities can be opened
-    k
-        number of facilities to be opened
-    
-    RETURNS
-    ----------
-    facilities: List[int]
-        the locations at which facilities are opened
-    """
-    
-    facilities = set()
-    for c in pairwise_disjoint:
-        for l in locations:
-            if calculate_distance(c, l) <= radius:
-                facilities.add(l)
-                break
-    
-    if len(facilities) < len(pairwise_disjoint):
-        return None
-    
-    #Check if k larger than the number of possible facility locations
-    k = min(k, len(locations))
-    
-    #Randomly add facilities for leftover budget
-    if k>len(facilities):
-        unopened_facilities = set(locations)-facilities
-        for i in range(k-len(facilities)):
-            facilities.add(unopened_facilities.pop())
-    
-    return list(facilities)
 
 def most_coverage(k: int, aggregation: int = 0):
     LOCATIONS_agg, CLIENT_LOCATIONS_agg = aggregate_data(aggregation)
