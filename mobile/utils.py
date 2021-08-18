@@ -74,16 +74,6 @@ def assign_facilities(facilities: List[int]):
    
     return assignments
 
-#TODO: What happens if homes are excluded are excluded from the problem entirely
-def calculate_objective(assignments: List[Tuple[int, int]]) -> float:
-    """
-    Calculates the maximum distance any client must travel to reach their facility based on the assignments
-    """
-    if len(assignments) == 0: return 0
-    
-    obj_val = [calculate_distance(loc, fac) for loc, fac in assignments]
-    return max(obj_val)
-
 def precompute_distances(client_locations: List[List[int]], locations: List[int]):
     """
     Computes the distances between client locations (indexed by column) and facility locations (indexed by row)
@@ -101,44 +91,9 @@ def precompute_distances(client_locations: List[List[int]], locations: List[int]
             c_loc_map[c] = c_ind
             G[-1][c_ind] = calculate_distance(c, l)
     
-    '''for row in G:
-        print(["{:.2f}".format(i) for i in row])'''
     return G, loc_map, c_loc_map
 
-#OUTDATED
-def assign_client_facilities(client_locations: List[List[int]], facilities: List[int]):
-    """
-    Assigns clients to their nearest facility from one of their visited locations.
-    Currently a helper function for fpt
-    PARAMETERS
-    ----------
-        client_locations
-            clients represented by index, contains a list of locations visited by each indexed client
-        open_facilities
-            list of facilities that will be opened
-    RETURNS
-    ----------
-        assignments
-            lists (visited location, facility) assignment for each client
-        obj_value
-            the maximum distance that a client must travel to reach its nearest facility, where clients are from client_locations
-    """
-    if len(facilities) == 0: return []
-    obj_val: int = 0
-    
-    assignments: List[Tuple[int, int]] = []
-    
-    for ind in range(len(client_locations)):
-        possible_assignments = [(calculate_distance(loc, fac), loc, fac) for loc in client_locations[ind] for fac in facilities]
-        
-        min_loc = min(possible_assignments)
-        if min_loc[0] > obj_val:
-            obj_val = min_loc[0]
-        assignments.append((min_loc[1], min_loc[2]))
-   
-    return assignments, obj_val
-
-def assign_client_facilities2(G: List[List[int]], loc_map: Dict[int, int], c_loc_map: Dict[int, int], client_locations: List[List[int]], facilities: List[int]):
+def assign_client_facilities(G: List[List[int]], loc_map: Dict[int, int], c_loc_map: Dict[int, int], client_locations: List[List[int]], facilities: List[int]):
     """
     Assigns clients to their nearest facility from one of their visited locations.
     Currently a helper function for fpt
@@ -171,7 +126,7 @@ def assign_client_facilities2(G: List[List[int]], loc_map: Dict[int, int], c_loc
    
     return obj_val
 
-def calculate_percentile_objective(assignments: List[Tuple[int, int]], percentile: float) -> float:
+def calculate_objective(assignments: List[Tuple[int, int]], percentile: float = 100) -> float:
     """
     Given that we only need to cover a certain percentils of clients,
     calculates the minimum objective value (maximum distance for any individual based on the assignments)
@@ -179,7 +134,7 @@ def calculate_percentile_objective(assignments: List[Tuple[int, int]], percentil
     if len(assignments) == 0: return 0
     
     obj_val = sorted([calculate_distance(loc, fac) for loc, fac in assignments])
-    ind = math.floor(len(obj_val)*percentile) -1
+    ind = math.floor(len(obj_val)*percentile/100) -1
     
     #If no clients are selected to be covered, then the objective is 0
     if ind < 0: return 0
