@@ -693,12 +693,9 @@ def _locate_facilities(radius: int, pairwise_disjoint: Set[int], locations: List
 
 def most_populous(k: int):
     return list(range(k)), assign_facilities(list(range(k)))
-<<<<<<< HEAD
-=======
 
 def most_coverage_agg(k: int, aggregation: int):
     LOCATIONS_agg, CLIENT_LOCATIONS_agg = aggregate_data(aggregation)
->>>>>>> 8ae45e9b6432304de8fd7e4432cda3dcd8615ac1
     
     facilities = cover_most(k, LOCATIONS_agg, CLIENT_LOCATIONS_agg)
     return facilities, assign_facilities(facilities)
