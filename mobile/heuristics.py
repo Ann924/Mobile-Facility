@@ -6,9 +6,6 @@ import time
 import ray
 from joblib import Parallel, delayed
 
-# TODO: standardize input structure (especially client_locations)
-# TODO: A LOT OF THINGS
-
 def fpt(k: int, s: int):
     """
     Picks the s activity locations that cover the most clients (through a set cover approximation)
