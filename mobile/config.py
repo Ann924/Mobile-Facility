@@ -1,6 +1,7 @@
 from collections import namedtuple
 from os import path
 import json
+from mobile import PROJECT_ROOT
 from typing import Dict, List, Tuple, Set
 import pandas as pd
 import geopy.distance
@@ -30,6 +31,7 @@ LOCATIONS_agg : List of dicts of the aggregated locations (within radius 10 m)
     "members" : The lid indices that belong to this cluster
     "activity" : The number of clients that visit this aggregated cluster of locations
     "pid" : The list of clients that visit this aggregated cluster of locations
+    "home" : Is the location a residential location?
 
 CLIENT_LOCATIONS_agg : Dict mapping pids of clients to the aggregated locations
 ---------
@@ -38,20 +40,21 @@ CLIENT_LOCATIONS_agg : Dict mapping pids of clients to the aggregated locations
 address = namedtuple('address', ['index', 'location', 'facility'])
 HOME_SHIFT=1000000000
 
-def create_data_input():
+def create_data_input(county_name: str = 'charlottesville_city'):
     """
     LOCATIONS contains the pid of clients that visit the location
     """
     #Read in both the activity and residence locations
-    df_activity = pd.read_csv("usa_va_charlottesville_city_activity_locations.csv").rename({"alid": "lid"}, axis = 'columns')
-    df_residence = pd.read_csv("usa_va_charlottesville_city_residence_locations.csv")
+    
+    df_activity = pd.read_csv(PROJECT_ROOT/ 'data'/ 'raw'/ county_name / f"usa_va_{county_name}_activity_locations.csv").rename({"alid": "lid"}, axis = 'columns')
+    df_residence = pd.read_csv(PROJECT_ROOT/ 'data'/ 'raw'/ county_name/ f"usa_va_{county_name}_residence_locations.csv")
 
     #Shift the residence lid
     df_residence['lid'] = df_residence['rlid'] + HOME_SHIFT
     locations = pd.concat([df_activity[['lid', 'longitude', 'latitude']], df_residence[['lid', 'longitude', 'latitude']]]).reset_index(drop = True)
 
     #Read in the client visited locations data (adults only for now)
-    client_locations = pd.read_csv("usa_va_charlottesville_city_adult_activity_location_assignment_week.csv")
+    client_locations = pd.read_csv(PROJECT_ROOT/ 'data'/ 'raw'/ county_name/ f"usa_va_{county_name}_adult_activity_location_assignment_week.csv")
 
     #Get the coordinates of all the residential locations
     home_coords = set(df_residence[['latitude', 'longitude']].apply(tuple, axis=1).tolist())
@@ -87,34 +90,37 @@ def create_data_input():
 
     return locations.to_dict('index'), client_locations.to_dict('index')
 
-def write_data_input():
-    with open('original.json', 'w') as f:
-        LOCATIONS, CLIENT_LOCATIONS = create_data_input()
+def write_data_input(county_name: str = 'charlottesville_city'):
+    with open(PROJECT_ROOT / 'data' / 'processed' / county_name / 'original.json', 'w') as f:
+        LOCATIONS, CLIENT_LOCATIONS = create_data_input(county_name)
         data = {"LOCATIONS": LOCATIONS, "CLIENT_LOCATIONS": CLIENT_LOCATIONS}
         json.dump(data, f)
 
-def read_data_input(filename = 'original.json'):
-    file = open(filename, 'r')
+def read_data_input(county_name: str = 'charlottesville_city', filename: str = 'original.json'):
+    
+    directory_path = PROJECT_ROOT / 'data' / 'processed' / county_name / filename
+    if not path.exists(directory_path):
+        write_data_input(county_name)
+    
+    file = open(directory_path, 'r')
     data = json.load(file)
 
     LOCATIONS = []
     for key, val in data["LOCATIONS"].items():
         val["lid_ind"] = int(key)
+        val["home"] = val["lid"] >= HOME_SHIFT
         LOCATIONS.append(val)
     
     CLIENT_LOCATIONS = {int(value['pid']): value['lid'] for ind, value in data["CLIENT_LOCATIONS"].items()}
     return LOCATIONS, CLIENT_LOCATIONS
 
-######################################################
-
-LOCATIONS, CLIENT_LOCATIONS = read_data_input()
-
-######################################################
-
-LOCATIONS, CLIENT_LOCATIONS = [], {}
 
 
-def radius_cover(radius: float):
+############################################## AGGREGATION #################################################
+
+
+
+def radius_cover(LOCATIONS, CLIENT_LOCATIONS, radius: float, county_name: str = 'charlottesville_city'):
     """
     Helper method for set_cover_aggregation
     
@@ -123,7 +129,7 @@ def radius_cover(radius: float):
     """
     
     radius_dict = {}
-    LOCATIONS_act = [(ind, value) for ind,value in enumerate(LOCATIONS) if LOCATIONS[ind]['lid']<HOME_SHIFT]
+    LOCATIONS_act = [(ind, value) for ind,value in enumerate(LOCATIONS) if not LOCATIONS[ind]['home']]
     
     for i in range(len(LOCATIONS_act)):
         loc1 = LOCATIONS_act[i][0]
@@ -155,11 +161,11 @@ def radius_cover(radius: float):
         cover = cover.union(max_choice[1])
         chosen.add(max_choice[2])
     
-    with open(f'radius_cover_{1000*radius}.json', 'w') as f:
+    with open(PROJECT_ROOT/ 'data'/ 'processed'/ county_name / f'radius_cover_{int(1000*radius)}.json', 'w') as f:
         data = {"radius": radius, "radius_dict": radius_dict, "chosen": list(chosen)}
         json.dump(data, f)
 
-def set_cover_aggregation(radius: float = 0.01):
+def set_cover_aggregation(LOCATIONS, CLIENT_LOCATIONS, county_name: str = 'charlottesville_city', radius: float = 0.01):
     """
     Must be run after original LOCATIONS and CLIENT_LOCATIONS are read in
     
@@ -168,27 +174,25 @@ def set_cover_aggregation(radius: float = 0.01):
     Creates and returns a version of LOCATIONS and CLIENT_LOCATIONS that are based on the aggregate locs
     """
     
-    file_radius = open(f"radius_cover_{radius}.json", 'r')
+    file_radius = open(PROJECT_ROOT/ 'data'/ 'processed'/ county_name / f"radius_cover_{int(1000*radius)}.json", 'r')
     data_radius = json.load(file_radius)
+    
+    #Dict[int, List[int]] ==> {loc: locations covered by a ball of given radius centered at loc}
     cluster_dict = {int(ind): val for ind, val in data_radius["radius_dict"].items()}
+    
+    #Set[int] ==> contains the picked loc centers (for which the balls are constructed)
     chosen_points = set(data_radius["chosen"])
     
-    LOCATIONS_act = [(ind, value) for ind,value in enumerate(LOCATIONS) if LOCATIONS[ind]['lid']<HOME_SHIFT]
+    #--------------------------------- LOCATIONS ------------------------------# 
     
+    LOCATIONS_act = [(ind, value) for ind, value in enumerate(LOCATIONS) if not LOCATIONS[ind]['home']]
+    
+    #Reverse map the lids to the renumbered lid_ind
     reverse_lid_index = {}
     for i, loc in enumerate(LOCATIONS_act):
         reverse_lid_index[loc[0]] = i
-    
-    temp = []
-    cluster_dict_single = {}
-    
-    #To avoid repeat coverage, assign aggregation centers (from radius_dict) to the closest location in their set
-    min_matching = {}
-    for cluster in cluster_dict.keys():
-        
-        overlap = [member for member in cluster_dict[cluster] if member in chosen_points]
-        min_matching[cluster] = overlap
-    
+
+    activity_locations = []
     for point in chosen_points:
         
         pid_set = set()
@@ -197,63 +201,72 @@ def set_cover_aggregation(radius: float = 0.01):
         for loc in cluster_dict[point]:
             pid_set = pid_set.union(LOCATIONS[loc]['pid'])
         
-        temp.append({"lid_ind": point,
-                     "lid": LOCATIONS[point]['lid'],
-                     "longitude": LOCATIONS[point]['longitude'] ,
-                     "latitude": LOCATIONS[point]['latitude'],
-                     "members": member_list,
-                     "activity": len(pid_set),
-                     "pid": list(pid_set)})
-    
-    temp_res = []
-    LOCATIONS_res = [(ind, value) for ind,value in enumerate(LOCATIONS) if LOCATIONS[ind]['lid'] > HOME_SHIFT]
+        activity_locations.append({"lid_ind" : point,
+                     "longitude" : LOCATIONS[point]['longitude'] ,
+                     "latitude" : LOCATIONS[point]['latitude'],
+                     "activity" : len(pid_set),
+                     "pid" : list(pid_set),
+                     "home" : False})
+        
+    residential_locations = []
+    LOCATIONS_res = [(ind, value) for ind,value in enumerate(LOCATIONS) if LOCATIONS[ind]['home']]
     
     for loc in LOCATIONS_res:
         
         locations_dict = LOCATIONS[loc[0]]
         
-        new_dict = {}
-        new_dict["lid_ind"] = loc[0]
-        new_dict["lid"] = locations_dict['lid']
-        new_dict["longitude"] = locations_dict['longitude']
-        new_dict["latitude"] = locations_dict['latitude']
-        new_dict["members"] = [loc[0]]
-        new_dict["activity"] = locations_dict['activity']
-        new_dict["pid"] = locations_dict["pid"]
-        temp_res.append(new_dict)
+        residential_locations.append({"lid_ind": locations_dict['lid_ind'],
+                    "longitude" : locations_dict['longitude'],
+                    "latitude" : locations_dict['latitude'],
+                    "activity" : locations_dict['activity'],
+                    "pid" : locations_dict["pid"],
+                    "home" : True
+                    })
     
-    temp = sorted(temp+temp_res, key = lambda x: x["activity"], reverse = True)
+    LOCATIONS_agg = sorted(activity_locations + residential_locations, key = lambda x: x["activity"], reverse = True)
     
-    #-----Now for clients----#
+    ind_to_reindex = {}
+    for ind, loc in enumerate(LOCATIONS_agg):
+        ind_to_reindex[loc['lid_ind']] = ind
+        loc['lid_ind'] = ind
     
-    temp_client = {}
+    #------------------------- CLIENT LOCATIONS --------------------------------#
+    
+    #Maps each location to chosen locations covering it
+    coverage_matching = {}
+    for cluster in cluster_dict.keys():
+        overlap = [member for member in cluster_dict[cluster] if member in chosen_points]
+        coverage_matching[cluster] = overlap
+    
+    CLIENT_LOCATIONS_agg = {}
     for key, val in CLIENT_LOCATIONS.items():
         new_lid_list = []
         for loc in val:
-            if loc not in new_lid_list and LOCATIONS[loc]['lid'] < HOME_SHIFT:
-                for elem in min_matching[loc]:
-                    new_lid_list.append(elem)
+            if not LOCATIONS[loc]['home']:
+                for elem in coverage_matching[loc]:
+                    
+                    #Avoid repeats in client locations
+                    if elem not in new_lid_list:
+                        new_lid_list.append(ind_to_reindex[elem])
             else:
                 new_lid_list.append(loc)
         
-        temp_client[key] = new_lid_list
+        CLIENT_LOCATIONS_agg[key] = new_lid_list
     
-    return temp, temp_client
+    return LOCATIONS_agg, CLIENT_LOCATIONS_agg
 
 #TODO: incorporate pipelines
-def single_linkage_aggregation(radius: float = 0.02):
+def single_linkage_aggregation(LOCATIONS, CLIENT_LOCATIONS, county_name: str = 'charlottesville_city', radius: float = 0.02):
     """
     Must be run after LOCATIONS and CLIENT_LOCATIONS are read in
-    
-    
     Returns aggregated versions of LOCATIONS and CLIENT_LOCATIONS with single linkage clustering
     """
     
-    file_dict = open("aid2pid.json", 'r')
+    file_dict = open(PROJECT_ROOT / 'data'/ 'processed' / county_name /"aid2pid.json", 'r')
     data_dict = json.load(file_dict)
     AID_LOC = data_dict['data']
 
-    file_client = open("pid2aid.json", 'r')
+    file_client = open(PROJECT_ROOT / 'data'/ 'processed' / county_name /"pid2aid.json", 'r')
     data_client = json.load(file_client)
     AID_CLIENT = {int(key):val for key,val in data_client['data'].items()}
     
@@ -317,17 +330,17 @@ def single_linkage_aggregation(radius: float = 0.02):
 3) Represent each aid by most popular loc
 """
 
-def single_linkage_aggregation2(radius: float = 0.02):
+def single_linkage_aggregation2(LOCATIONS, CLIENT_LOCATIONS, county_name: str = 'charlottesville_city', radius: float = 0.02):
     """
     Must be run after LOCATIONS and CLIENT_LOCATIONS are read in
     Returns aggregated versions of LOCATIONS and CLIENT_LOCATIONS with single linkage clustering
     """
     
-    file_dict = open("aid2pid.json", 'r')
+    file_dict = open(PROJECT_ROOT / 'data'/ 'processed'/county_name/"aid2pid.json", 'r')
     data_dict = json.load(file_dict)
     AID_LOC = data_dict['data']
 
-    file_client = open("pid2aid.json", 'r')
+    file_client = open(PROJECT_ROOT / 'data'/ 'processed'/county_name/ "pid2aid.json", 'r')
     data_client = json.load(file_client)
     AID_CLIENT = {int(key):val for key,val in data_client['data'].items()}
     
@@ -351,6 +364,7 @@ def single_linkage_aggregation2(radius: float = 0.02):
             new_dict["members"] = [lid_to_ind[AID_LOC[i]['aid']]]
             new_dict["activity"] = AID_LOC[i]["activity"]
             new_dict["pid"] = AID_LOC[i]["visitors"]
+            new_dict["home"] = True
             
             ind_to_aid[lid_to_ind[AID_LOC[i]['aid']]] = i
         
@@ -390,6 +404,7 @@ def single_linkage_aggregation2(radius: float = 0.02):
             new_dict["members"] = [lid_to_ind[m] for m in AID_LOC[i]['members']]
             new_dict["activity"] = AID_LOC[i]["activity"]
             new_dict["pid"] = AID_LOC[i]["visitors"]
+            new_dict["home"] = False
             
             ind_to_aid[new_dict["lid_ind"]] = i
             
@@ -409,7 +424,7 @@ def single_linkage_aggregation2(radius: float = 0.02):
     
     return LOCATIONS_agg, CLIENT_LOCATIONS_agg
 
-def aggregate_data(aggregation: int = 1, radius: float = 0.01):
+def aggregate_data(county_name: str = 'charlottesville_city', aggregation: int = 1, radius: float = 0.01):
     """
     Aggregation Options
         0 : default, no aggregation
@@ -417,15 +432,17 @@ def aggregate_data(aggregation: int = 1, radius: float = 0.01):
         2 : single linkage aggregation
     """
     
+    LOCATIONS, CLIENT_LOCATIONS = read_data_input(county_name)
+    
     if aggregation == 2:
-        return single_linkage_aggregation2()
+        return single_linkage_aggregation2(LOCATIONS, CLIENT_LOCATIONS, county_name, radius)
         
     elif aggregation == 1:
         
-        filename = f"radius_cover_{radius}.json"
+        filename = PROJECT_ROOT / 'data'/ 'processed'/ county_name/ f"radius_cover_{int(1000*radius)}.json"
         if not path.exists(filename):
-            radius_cover(radius)
-        return set_cover_aggregation()
+            radius_cover(LOCATIONS, CLIENT_LOCATIONS, radius, county_name)
+        return set_cover_aggregation(LOCATIONS, CLIENT_LOCATIONS, county_name, radius)
         
     else:
         

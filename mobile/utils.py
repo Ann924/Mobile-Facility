@@ -1,7 +1,7 @@
 from typing import Dict, List, Tuple, Set
 import random
 import math
-from config import LOCATIONS, CLIENT_LOCATIONS, HOME_SHIFT, address
+from mobile.config import LOCATIONS, CLIENT_LOCATIONS, HOME_SHIFT, address
 import geopy.distance
 from itertools import chain, combinations
 
