@@ -92,7 +92,7 @@ def precompute_distances(client_locations: List[List[int]], locations: List[int]
 #                                 Utility Functions For Heuristics                                      #
 #########################################################################################################
 
-def cover_most(s: int, LOCATIONS_fpt, CLIENT_LOCATIONS_fpt):
+def cover_most(s: int):
     """
     Helper method for FPT: returns the set of activity locations of size s that cover the most clients
     Used with aggregate activity locations
@@ -106,10 +106,10 @@ def cover_most(s: int, LOCATIONS_fpt, CLIENT_LOCATIONS_fpt):
     covered = set()
     selected = []
     for i in range(s):
-        most_coverage = max([(len(set(LOCATIONS_fpt[l]['pid']) - covered), l, LOCATIONS_fpt[l]['lid_ind']) for l in range(len(LOCATIONS_fpt))])
+        most_coverage = max([(len(set(LOCATIONS[l]['pid']) - covered), l, LOCATIONS[l]['lid_ind']) for l in range(len(LOCATIONS))])
         selected.append(most_coverage[2])
-        covered = covered.union(LOCATIONS_fpt[most_coverage[1]]['pid'])
-    print(f"COVERAGE OF CLIENTS BY {s} LOCATIONS: ", len(covered)/len(CLIENT_LOCATIONS_fpt.keys()))
+        covered = covered.union(LOCATIONS[most_coverage[1]]['pid'])
+    print(f"COVERAGE OF CLIENTS BY {s} LOCATIONS: ", len(covered)/len(CLIENT_LOCATIONS.keys()))
     return selected
 
 def assign_client_facilities(G: List[List[int]], loc_map: Dict[int, int], c_loc_map: Dict[int, int], client_locations: List[List[int]], facilities: List[int]):
@@ -149,7 +149,7 @@ def assign_client_facilities(G: List[List[int]], loc_map: Dict[int, int], c_loc_
 #                                        K-Supplier Functions                                           #
 #########################################################################################################
 
-def _k_supplier(clients: List[int], locations: List[int], k: int):
+def k_supplier(clients: List[int], locations: List[int], k: int):
     """
     Solves k-supplier (where client locations and facility locations may not overlap) with Hochbaum-Shmoys
     3-approximation algorithm

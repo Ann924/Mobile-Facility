@@ -1,7 +1,7 @@
 import random
 from typing import Dict, List, Tuple, Set
 from mobile.utils import *
-from mobile.config import LOCATIONS, CLIENT_LOCATIONS, HOME_SHIFT, aggregate_data
+from mobile.config import LOCATIONS, CLIENT_LOCATIONS, HOME_SHIFT
 import time
 import ray
 from joblib import Parallel, delayed
@@ -9,7 +9,7 @@ from joblib import Parallel, delayed
 # TODO: standardize input structure (especially client_locations)
 # TODO: A LOT OF THINGS
 
-def fpt(k: int, s: int, aggregation: int = 0):
+def fpt(k: int, s: int):
     """
     Picks the s activity locations that cover the most clients (through a set cover approximation)
     Assumes the number of locations visited by clients is bounded by a constant
@@ -35,19 +35,17 @@ def fpt(k: int, s: int, aggregation: int = 0):
         visited location and facility assignment indexed by each client
     """
     
-    LOCATIONS_fpt, CLIENT_LOCATIONS_fpt = aggregate_data(aggregation)
-    
-    potential_facility_locations = cover_most(s, LOCATIONS_fpt, CLIENT_LOCATIONS_fpt)
+    potential_facility_locations = cover_most(s)
     
     #Remove homes from the client_location lists
     #TODO: Perhaps create mapping for the indices of people before exclusion and after?
     client_locations_excluded = []
-    for person in CLIENT_LOCATIONS_fpt.values():
+    for person in CLIENT_LOCATIONS.values():
         new_list = [p for p in person[1:] if p in potential_facility_locations]
         if len(new_list)>0:
             client_locations_excluded.append(new_list)
     
-    locations = [LOCATIONS_fpt[i]['lid_ind'] for i in range(len(LOCATIONS_fpt)) if LOCATIONS_fpt[i]['lid'] < HOME_SHIFT]
+    locations = [LOCATIONS[i]['lid_ind'] for i in range(len(LOCATIONS)) if not LOCATIONS[i]['home']]
     
     G, loc_map, c_loc_map = precompute_distances(client_locations_excluded, locations)
     
@@ -55,8 +53,8 @@ def fpt(k: int, s: int, aggregation: int = 0):
     
     @ray.remote
     def process(guess):
-        facilities = _k_supplier(list(guess), locations, k)
-        obj_value = assign_client_facilities2(G, loc_map, c_loc_map, client_locations_excluded, facilities)
+        facilities = k_supplier(list(guess), locations, k)
+        obj_value = assign_client_facilities(G, loc_map, c_loc_map, client_locations_excluded, facilities)
         return obj_value, facilities
     
     futures = [process.remote(guess) for guess in powerset(list(potential_facility_locations))]
@@ -107,7 +105,7 @@ def center_of_centers2(k: int):
     
     return facilities, assign_facilities(facilities)
 
-def center_of_centers(k: int, aggregation: int = 0):
+def center_of_centers(k: int):
     """
     PARAMETERS
     ----------
@@ -122,11 +120,9 @@ def center_of_centers(k: int, aggregation: int = 0):
         visited location and facility assignment indexed by each client
     """
     
-    LOCATIONS_center, CLIENT_LOCATIONS_center = aggregate_data(aggregation)
-    
     clients = []
     
-    for client in CLIENT_LOCATIONS_center.values():
+    for client in CLIENT_LOCATIONS.values():
         
         dispersion = 1e10
         effective_center = -1
@@ -144,12 +140,12 @@ def center_of_centers(k: int, aggregation: int = 0):
                 
         clients.append(effective_center)
         
-    locations = [LOCATIONS_center[i]['lid_ind'] for i in range(len(LOCATIONS_center)) if LOCATIONS_center[i]['lid'] < HOME_SHIFT]
-    facilities = _k_supplier(clients, locations, k)
+    locations = [LOCATIONS[i]['lid_ind'] for i in range(len(LOCATIONS)) if not LOCATIONS[i]['home']]
+    facilities = k_supplier(clients, locations, k)
     
     return facilities, assign_facilities(facilities)
 
-def center_of_homes(k: int, aggregation: int = 0):
+def center_of_homes(k: int):
     """
     Opens facilities based only on home-locations
     
@@ -166,23 +162,19 @@ def center_of_homes(k: int, aggregation: int = 0):
         visited location and facility assignment indexed by each client
     """
     
-    LOCATIONS_home, CLIENT_LOCATIONS_home = aggregate_data(aggregation)
+    potential_facility_locations = [LOCATIONS[key]['lid_ind'] for key in range(len(LOCATIONS)) if not LOCATIONS[key]['home']]
+    homes = set(locs[0] for locs in CLIENT_LOCATIONS.values())
     
-    potential_facility_locations = [LOCATIONS_home[key]['lid_ind'] for key in range(len(LOCATIONS_home)) if LOCATIONS_home[key]['lid'] < HOME_SHIFT]
-    homes = set(locs[0] for locs in CLIENT_LOCATIONS_home.values())
-    
-    facilities = _k_supplier(list(homes), potential_facility_locations, k)
+    facilities = k_supplier(list(homes), potential_facility_locations, k)
     
     return facilities, assign_facilities(facilities)
 
-def most_coverage(k: int, aggregation: int = 0):
-    LOCATIONS_agg, CLIENT_LOCATIONS_agg = aggregate_data(aggregation)
+def most_coverage(k: int):
     
-    facilities = cover_most(k, LOCATIONS_agg, CLIENT_LOCATIONS_agg)
+    facilities = cover_most(k)
     return facilities, assign_facilities(facilities)
 
-def most_populous(k: int, aggregation: int = 0):
-    LOCATIONS_agg, CLIENT_LOCATIONS_agg = aggregate_data(aggregation)
+def most_populous(k: int):
     
-    facilities = [LOCATIONS_agg[i]['lid_ind'] for i in range(k)]
+    facilities = [LOCATIONS[i]['lid_ind'] for i in range(k)]
     return facilities, assign_facilities(facilities)
