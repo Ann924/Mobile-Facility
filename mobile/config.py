@@ -346,28 +346,24 @@ def single_linkage_aggregation2(LOCATIONS, CLIENT_LOCATIONS, county_name: str = 
     AID_CLIENT = {int(key):val for key,val in data_client['data'].items()}
     
     lid_to_ind = {}
-    for ind, val in enumerate(LOCATIONS):
-        lid_to_ind[val['lid']] = ind
+    for ind, loc in enumerate(LOCATIONS):
+        lid_to_ind[loc['lid']] = ind
     
-    ind_to_aid = {}
+    aid_to_ind = {}
     LOCATIONS_agg = []
-    original_loc_length = len(LOCATIONS)
-    
-    count = 0
+
     for i in range(len(AID_LOC)):
         
         if AID_LOC[i]['aid'] >= HOME_SHIFT:
-            new_dict = {}
-            new_dict["lid_ind"] = lid_to_ind[AID_LOC[i]['aid']]
-            new_dict["lid"] = AID_LOC[i]['aid']
-            new_dict["longitude"] = AID_LOC[i]['longitude']
-            new_dict["latitude"] = AID_LOC[i]['latitude']
-            new_dict["members"] = [lid_to_ind[AID_LOC[i]['aid']]]
-            new_dict["activity"] = AID_LOC[i]["activity"]
-            new_dict["pid"] = AID_LOC[i]["visitors"]
-            new_dict["home"] = True
+            new_dict = {"lid_ind" : i,
+                        "longitude" : AID_LOC[i]['longitude'],
+                        "latitude" : AID_LOC[i]['latitude'],
+                        "activity" : AID_LOC[i]["activity"],
+                        "pid" : AID_LOC[i]["visitors"],
+                        "home" : True
+            }
             
-            ind_to_aid[lid_to_ind[AID_LOC[i]['aid']]] = i
+            aid_to_ind[AID_LOC[i]['aid']] = i
         
         else:
             
@@ -392,35 +388,35 @@ def single_linkage_aggregation2(LOCATIONS, CLIENT_LOCATIONS, county_name: str = 
                         distance_list.append((dist, m, b))
                 
                 dispersion = max(distance_list)
+                
                 if dispersion[0]<min_dist[0]:
                     min_dist = dispersion
             
+            new_dict = {"lid_ind" : i,
+                        "longitude" : LOCATIONS[min_dist[1]]['longitude'],
+                        "latitude" : LOCATIONS[min_dist[1]]['latitude'],
+                        "activity" : AID_LOC[i]["activity"],
+                        "pid" : AID_LOC[i]["visitors"],
+                        "home" : False
+            }
             
-            #lids of new aggregated locations are set to be negative
-            new_dict = {}
-            new_dict["lid_ind"] = min_dist[1]
-            new_dict["lid"] = LOCATIONS[min_dist[1]]['lid']
-            new_dict["longitude"] = AID_LOC[i]['longitude']
-            new_dict["latitude"] = AID_LOC[i]['latitude']
-            new_dict["members"] = [lid_to_ind[m] for m in AID_LOC[i]['members']]
-            new_dict["activity"] = AID_LOC[i]["activity"]
-            new_dict["pid"] = AID_LOC[i]["visitors"]
-            new_dict["home"] = False
-            
-            ind_to_aid[new_dict["lid_ind"]] = i
-            
-            count+=1
+            aid_to_ind[AID_LOC[i]['aid']] = i
             
         LOCATIONS_agg.append(new_dict)
     
     CLIENT_LOCATIONS_agg = {}
+    
     for key in CLIENT_LOCATIONS.keys():
         new_list = []
         for loc in AID_CLIENT[key]:
+            
+            if aid_to_ind[loc] >= len(AID_CLIENT):
+                print(loc, aid_to_ind[loc])
+            
             if loc >= HOME_SHIFT:
-                new_list.insert(0, lid_to_ind[loc])
+                new_list.insert(0, aid_to_ind[loc])
             else:
-                new_list.append(LOCATIONS_agg[loc]['lid_ind'])
+                new_list.append(aid_to_ind[loc])
         CLIENT_LOCATIONS_agg[key] = new_list
     
     return LOCATIONS_agg, CLIENT_LOCATIONS_agg
@@ -436,6 +432,7 @@ def aggregate_data(county_name: str = 'charlottesville_city', aggregation: int =
     LOCATIONS, CLIENT_LOCATIONS = read_data_input(county_name)
 
     if aggregation == 2:
+        
         return single_linkage_aggregation2(LOCATIONS, CLIENT_LOCATIONS, county_name, radius)
         
     elif aggregation == 1:
@@ -446,6 +443,7 @@ def aggregate_data(county_name: str = 'charlottesville_city', aggregation: int =
         return set_cover_aggregation(LOCATIONS, CLIENT_LOCATIONS, county_name, radius)
         
     else:
+
         return LOCATIONS, CLIENT_LOCATIONS
 
-LOCATIONS, CLIENT_LOCATIONS = aggregate_data(aggregation = 0)
+LOCATIONS, CLIENT_LOCATIONS = aggregate_data(county_name = 'charlottesville_city', aggregation = 2)
