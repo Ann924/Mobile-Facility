@@ -13,40 +13,22 @@ def powerset(iterable):
     s = list(iterable)
     return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
 
-def cover_most(s: int, LOCATIONS_fpt, CLIENT_LOCATIONS_fpt):
+def calculate_objective(assignments: List[Tuple[int, int]], percentile: float = 100) -> float:
     """
-    Helper method for FPT: returns the set of activity locations of size s that cover the most clients
-    Used with aggregate activity locations
-    
-    aggregation : int
-    the version of aggregation selected
-    0 --> none
-    1 --> set cover: aggregation with repeats in coverage
+    Given that we only need to cover a certain percentils of clients,
+    calculates the minimum objective value (maximum distance for any individual based on the assignments)
     """
+    if len(assignments) == 0: return 0
     
-    covered = set()
-    selected = []
-    for i in range(s):
-        most_coverage = max([(len(set(LOCATIONS_fpt[l]['pid']) - covered), l, LOCATIONS_fpt[l]['lid_ind']) for l in range(len(LOCATIONS_fpt))])
-        selected.append(most_coverage[2])
-        covered = covered.union(LOCATIONS_fpt[most_coverage[1]]['pid'])
-    print(f"COVERAGE OF CLIENTS BY {s} LOCATIONS: ", len(covered)/len(CLIENT_LOCATIONS_fpt.keys()))
-    return selected
+    obj_val = sorted([calculate_distance(loc, fac) for loc, fac in assignments])
+    ind = math.floor(len(obj_val)*percentile/100) -1
+    
+    #If no clients are selected to be covered, then the objective is 0
+    if ind < 0: return 0
+    
+    return obj_val[ind]
 
-def calculate_distance(loc1: int, loc2: int):
-    """
-    Calculates the haversine distance between two location indices
-    """
-    if loc1 == loc2:
-        return 0
     
-    coord1_row = LOCATIONS[loc1]
-    coord2_row = LOCATIONS[loc2]
-    coord1 = (coord1_row['latitude'], coord1_row['longitude'])
-    coord2 = (coord2_row['latitude'], coord2_row['longitude'])
-    return geopy.distance.great_circle(coord1, coord2).km
-    
-# TODO: Do we still pass in visited locations
 def assign_facilities(facilities: List[int]):
     """
     Assigns clients to their nearest facility from one of their visited locations.
@@ -74,6 +56,19 @@ def assign_facilities(facilities: List[int]):
    
     return assignments
 
+def calculate_distance(loc1: int, loc2: int):
+    """
+    Calculates the haversine distance between two location indices
+    """
+    if loc1 == loc2:
+        return 0
+    
+    coord1_row = LOCATIONS[loc1]
+    coord2_row = LOCATIONS[loc2]
+    coord1 = (coord1_row['latitude'], coord1_row['longitude'])
+    coord2 = (coord2_row['latitude'], coord2_row['longitude'])
+    return geopy.distance.great_circle(coord1, coord2).km
+
 def precompute_distances(client_locations: List[List[int]], locations: List[int]):
     """
     Computes the distances between client locations (indexed by column) and facility locations (indexed by row)
@@ -92,6 +87,30 @@ def precompute_distances(client_locations: List[List[int]], locations: List[int]
             G[-1][c_ind] = calculate_distance(c, l)
     
     return G, loc_map, c_loc_map
+
+#########################################################################################################
+#                                 Utility Functions For Heuristics                                      #
+#########################################################################################################
+
+def cover_most(s: int, LOCATIONS_fpt, CLIENT_LOCATIONS_fpt):
+    """
+    Helper method for FPT: returns the set of activity locations of size s that cover the most clients
+    Used with aggregate activity locations
+    
+    aggregation : int
+    the version of aggregation selected
+    0 --> none
+    1 --> set cover: aggregation with repeats in coverage
+    """
+    
+    covered = set()
+    selected = []
+    for i in range(s):
+        most_coverage = max([(len(set(LOCATIONS_fpt[l]['pid']) - covered), l, LOCATIONS_fpt[l]['lid_ind']) for l in range(len(LOCATIONS_fpt))])
+        selected.append(most_coverage[2])
+        covered = covered.union(LOCATIONS_fpt[most_coverage[1]]['pid'])
+    print(f"COVERAGE OF CLIENTS BY {s} LOCATIONS: ", len(covered)/len(CLIENT_LOCATIONS_fpt.keys()))
+    return selected
 
 def assign_client_facilities(G: List[List[int]], loc_map: Dict[int, int], c_loc_map: Dict[int, int], client_locations: List[List[int]], facilities: List[int]):
     """
@@ -126,17 +145,128 @@ def assign_client_facilities(G: List[List[int]], loc_map: Dict[int, int], c_loc_
    
     return obj_val
 
-def calculate_objective(assignments: List[Tuple[int, int]], percentile: float = 100) -> float:
+#########################################################################################################
+#                                        K-Supplier Functions                                           #
+#########################################################################################################
+
+def _k_supplier(clients: List[int], locations: List[int], k: int):
     """
-    Given that we only need to cover a certain percentils of clients,
-    calculates the minimum objective value (maximum distance for any individual based on the assignments)
+    Solves k-supplier (where client locations and facility locations may not overlap) with Hochbaum-Shmoys
+    3-approximation algorithm
+    
+    PARAMETERS
+    ----------
+    distance
+        diagonally-filled adjacency matrix for distances between locations
+    clients
+        each client is associated with a singular location
+    locations
+        points of interest at which facilities can be opened
+    k
+        number of facilities to be opened
+    
+    RETURNS
+    ----------
+    facilities : List[int]
+        the facility locations that are open
     """
-    if len(assignments) == 0: return 0
+    l = 0
+    #r = 40075
+    r=100
+    to_ret = -1
+    #EPSILON = 10**(-6)
+    EPSILON = 10**(-4)
     
-    obj_val = sorted([calculate_distance(loc, fac) for loc, fac in assignments])
-    ind = math.floor(len(obj_val)*percentile/100) -1
+    while r-l > EPSILON:
     
-    #If no clients are selected to be covered, then the objective is 0
-    if ind < 0: return 0
+        mid = l + (r - l) / 2
+
+        if len(_check_radius(mid, clients)) <= k:
+            facilities: List[int] = _locate_facilities(mid,
+                                    _check_radius(mid, clients), locations, k)
+            if facilities:
+                to_ret = mid
+                r = mid
+            else:
+                l = mid
+        else:
+            l = mid
     
-    return obj_val[ind]
+    return _locate_facilities(to_ret,_check_radius(to_ret, clients), locations, k)
+
+def _check_radius(radius: int, clients: List[int]):
+    """Determine the maximal independent set of pairiwse independent client balls with given radius
+    
+    PARAMETERS
+    ----------
+    radius
+        from the binary search
+    distances
+        diagonally-filled adjacency matrix for distances between locations
+    clients
+        each client is associated with a singular location
+    
+    RETURNS
+    ----------
+    pairwise_disjoint
+        maximal independent pairwise disjoint set of clients, where disjoint is defined as greater than a distance
+        of 2*radius apart
+    """
+    
+    pairwise_disjoint = set()
+    
+    V = set(clients)
+    while len(V)!=0:
+        v = V.pop()
+        pairwise_disjoint.add(v)
+        
+        remove = set()
+        for i in V:
+            if calculate_distance(v, i) <= 2*radius:
+                remove.add(i)
+        V-=remove
+    
+    return pairwise_disjoint
+
+def _locate_facilities(radius: int, pairwise_disjoint: Set[int], locations: List[int], k: int):
+    """Select a facility to open within the given radius for each pairwise_disjoint client
+    
+    PARAMETERS
+    ----------
+    radius
+        from the binary search
+    distances
+        diagonally-filled adjacency matrix for distances between locations
+    pairwise_disjoint
+        clients that are not within a distance of 2*radius from one another
+    locations
+        points of interest where facilities can be opened
+    k
+        number of facilities to be opened
+    
+    RETURNS
+    ----------
+    facilities: List[int]
+        the locations at which facilities are opened
+    """
+    
+    facilities = set()
+    for c in pairwise_disjoint:
+        for l in locations:
+            if calculate_distance(c, l) <= radius:
+                facilities.add(l)
+                break
+    
+    if len(facilities) < len(pairwise_disjoint):
+        return None
+    
+    #Check if k larger than the number of possible facility locations
+    k = min(k, len(locations))
+    
+    #Randomly add facilities for leftover budget
+    if k>len(facilities):
+        unopened_facilities = set(locations)-facilities
+        for i in range(k-len(facilities)):
+            facilities.add(unopened_facilities.pop())
+    
+    return list(facilities)
