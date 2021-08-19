@@ -158,6 +158,7 @@ def center_of_homes(k: int):
     assignments : List[Tuple[int, int]]
         visited location and facility assignment indexed by each client
     """
+    print(len(LOCATIONS))
     
     potential_facility_locations = [LOCATIONS[key]['lid_ind'] for key in range(len(LOCATIONS)) if not LOCATIONS[key]['home']]
     homes = set(locs[0] for locs in CLIENT_LOCATIONS.values())
