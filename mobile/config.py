@@ -99,6 +99,7 @@ def write_data_input(county_name: str = 'charlottesville_city'):
 def read_data_input(county_name: str = 'charlottesville_city', filename: str = 'original.json'):
     
     directory_path = PROJECT_ROOT / 'data' / 'processed' / county_name / filename
+    
     if not path.exists(directory_path):
         write_data_input(county_name)
     
@@ -249,7 +250,7 @@ def set_cover_aggregation(LOCATIONS, CLIENT_LOCATIONS, county_name: str = 'charl
                     if elem not in new_lid_list:
                         new_lid_list.append(ind_to_reindex[elem])
             else:
-                new_lid_list.append(loc)
+                new_lid_list.append(ind_to_reindex[loc])
         
         CLIENT_LOCATIONS_agg[key] = new_lid_list
     
@@ -433,17 +434,18 @@ def aggregate_data(county_name: str = 'charlottesville_city', aggregation: int =
     """
     
     LOCATIONS, CLIENT_LOCATIONS = read_data_input(county_name)
-    
+
     if aggregation == 2:
         return single_linkage_aggregation2(LOCATIONS, CLIENT_LOCATIONS, county_name, radius)
         
     elif aggregation == 1:
         
-        filename = PROJECT_ROOT / 'data'/ 'processed'/ county_name/ f"radius_cover_{int(1000*radius)}.json"
+        filename = PROJECT_ROOT / 'data'/ 'processed'/ county_name / f"radius_cover_{int(1000*radius)}.json"
         if not path.exists(filename):
             radius_cover(LOCATIONS, CLIENT_LOCATIONS, radius, county_name)
         return set_cover_aggregation(LOCATIONS, CLIENT_LOCATIONS, county_name, radius)
         
     else:
-        
         return LOCATIONS, CLIENT_LOCATIONS
+
+LOCATIONS, CLIENT_LOCATIONS = aggregate_data(aggregation = 0)
