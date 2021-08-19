@@ -1,9 +1,7 @@
 import random
 from typing import Dict, List, Tuple, Set
-from problem import *
-from round import *
-from utils import *
-from config import LOCATIONS, CLIENT_LOCATIONS, HOME_SHIFT, aggregate_data
+from mobile.utils import *
+from mobile.config import LOCATIONS, CLIENT_LOCATIONS, HOME_SHIFT, aggregate_data
 import time
 import ray
 from joblib import Parallel, delayed
