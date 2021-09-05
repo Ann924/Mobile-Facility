@@ -4,7 +4,6 @@ mobile/__init__.py
 mobile/config.py
 mobile/heuristics.py
 mobile/problem.py
-mobile/test.py
 mobile/utils.py
 mobile.egg-info/PKG-INFO
 mobile.egg-info/SOURCES.txt

@@ -1,8 +1,7 @@
-import networkx as nx
 import random
 import json
-from heuristics import *
-from utils import calculate_objective
+from mobile.heuristics import *
+from mobile.utils import calculate_objective
 
 def contains_float(X):
     
@@ -51,7 +50,7 @@ def test_function(k:int, s:int):
     Runs each heuristic and calculates the objective value over all clients and client locations
     """
 
-    print("------------IND ROUNDING------------------")
+    '''print("------------IND ROUNDING------------------")
     X_ind, Y_ind = independent_LP(k, 10, 10)
     print(X_ind)
     print("Recalculated Objective Value: \t" + str(calculate_objective(Y_ind)))
@@ -65,7 +64,7 @@ def test_function(k:int, s:int):
     print("------------DEP ROUNDING-----------------")
     X_dep, Y_dep = dependent_LP(k, 10, 10)
     print(X_dep)
-    print("Recalculated Objective Value: \t" + str(calculate_objective(Y_dep)))
+    print("Recalculated Objective Value: \t" + str(calculate_objective(Y_dep)))'''
     
     print("----------Center of Homes----------------")
     X_home, Y_home = center_of_homes(k)
@@ -83,7 +82,7 @@ def test_function(k:int, s:int):
     print("Recalculated Objective Value: \t" + str(calculate_objective(Y_pop)))
     
     print("----------------FPT----------------------")
-    X_fpt, Y_fpt = fpt2_parallel2(k, 20)
+    X_fpt, Y_fpt = fpt(k, s)
     print(X_fpt)
     print("Recalculated Objective Value: \t" + str(calculate_objective(Y_fpt)))
 
@@ -181,5 +180,6 @@ def run_all_heuristics(k: int, s: int, aggregation: int = 0):
 """X_ind, Y_ind = integer_LP(5, 10, 10)
 print(X_ind)
 print("Recalculated Objective Value: \t" + str(calculate_objective(Y_ind)))"""
-run_all_heuristics(5, 10, 2)
+test_function(5, 10)
+#run_all_heuristics(5, 10, 2)
 #single_fpt_run(6, 25, 1)

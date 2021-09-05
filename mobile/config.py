@@ -24,11 +24,9 @@ LOCATIONS : List containing dicts of the following
 CLIENT_LOCATIONS : Dict mapping pids of clients to the locations (represented by location indicies from LOCATIONS) each client visits
 
 LOCATIONS_agg : List of dicts of the aggregated locations (within radius 10 m)
-    "lid" : The index of the lid (from LOCATIONS) of the center of the aggregated location
-    "lid_ind" : The index of each location in LOCATIONS
+    "lid_ind" : The sorted order numbering of aggregated locations
     "longitude" : Longitude of the center
     "latitude" : Latitude of the center
-    "members" : The lid indices that belong to this cluster
     "activity" : The number of clients that visit this aggregated cluster of locations
     "pid" : The list of clients that visit this aggregated cluster of locations
     "home" : Is the location a residential location?
@@ -131,6 +129,7 @@ def radius_cover(LOCATIONS, CLIENT_LOCATIONS, radius: float, county_name: str = 
     
     radius_dict = {}
     LOCATIONS_act = [(ind, value) for ind,value in enumerate(LOCATIONS) if not LOCATIONS[ind]['home']]
+    print(len(LOCATIONS_act))
     
     for i in range(len(LOCATIONS_act)):
         loc1 = LOCATIONS_act[i][0]
@@ -275,42 +274,20 @@ def single_linkage_aggregation(LOCATIONS, CLIENT_LOCATIONS, county_name: str = '
     for ind, val in enumerate(LOCATIONS):
         lid_to_ind[val['lid']] = ind
     
-    ind_to_aid = {}
+    aid_to_ind = {}
     LOCATIONS_agg = []
-    original_loc_length = len(LOCATIONS)
     
-    count = 0
     for i in range(len(AID_LOC)):
         
-        if AID_LOC[i]['aid'] >= HOME_SHIFT:
-            new_dict = {}
-            new_dict["lid_ind"] = lid_to_ind[AID_LOC[i]['aid']]
-            new_dict["lid"] = AID_LOC[i]['aid']
-            new_dict["longitude"] = AID_LOC[i]['longitude']
-            new_dict["latitude"] = AID_LOC[i]['latitude']
-            new_dict["members"] = [lid_to_ind[AID_LOC[i]['aid']]]
-            new_dict["activity"] = AID_LOC[i]["activity"]
-            new_dict["pid"] = AID_LOC[i]["visitors"]
-            
-            ind_to_aid[lid_to_ind[AID_LOC[i]['aid']]] = i
-        
-        else:
-            #lids of new aggregated locations are set to be negative
-            new_dict = {}
-            new_dict["lid_ind"] = original_loc_length + count
-            new_dict["lid"] = -1 * (count+1)
-            new_dict["longitude"] = AID_LOC[i]['longitude']
-            new_dict["latitude"] = AID_LOC[i]['latitude']
-            new_dict["members"] = [lid_to_ind[m] for m in AID_LOC[i]['members']]
-            new_dict["activity"] = AID_LOC[i]["activity"]
-            new_dict["pid"] = AID_LOC[i]["visitors"]
-            
-            ind_to_aid[original_loc_length + count] = i
-            
-            count+=1
-            
-            LOCATIONS.append(new_dict)
-        
+        new_dict = {"lid_ind" : i,
+            "longitude" : AID_LOC[i]['longitude'],
+            "latitude" : AID_LOC[i]['latitude'],
+            "activity" : AID_LOC[i]["activity"],
+            "pid" : AID_LOC[i]["visitors"],
+            "home" : AID_LOC[i]['aid'] >= HOME_SHIFT
+        }
+
+        aid_to_ind[AID_LOC[i]['aid']] = i
         LOCATIONS_agg.append(new_dict)
     
     CLIENT_LOCATIONS_agg = {}
@@ -318,9 +295,9 @@ def single_linkage_aggregation(LOCATIONS, CLIENT_LOCATIONS, county_name: str = '
         new_list = []
         for loc in AID_CLIENT[key]:
             if loc >= HOME_SHIFT:
-                new_list.insert(0, lid_to_ind[loc])
+                new_list.insert(0, aid_to_ind[loc])
             else:
-                new_list.append(LOCATIONS_agg[loc]['lid_ind'])
+                new_list.append(loc)
         CLIENT_LOCATIONS_agg[key] = new_list
     
     return LOCATIONS_agg, CLIENT_LOCATIONS_agg
@@ -422,6 +399,7 @@ def single_linkage_aggregation2(LOCATIONS, CLIENT_LOCATIONS, county_name: str = 
     return LOCATIONS_agg, CLIENT_LOCATIONS_agg
 
 def aggregate_data(county_name: str = 'charlottesville_city', aggregation: int = 1, radius: float = 0.01):
+    
     """
     Aggregation Options
         0 : default, no aggregation
@@ -437,13 +415,37 @@ def aggregate_data(county_name: str = 'charlottesville_city', aggregation: int =
         
     elif aggregation == 1:
         
-        filename = PROJECT_ROOT / 'data'/ 'processed'/ county_name / f"radius_cover_{int(1000*radius)}.json"
-        if not path.exists(filename):
-            radius_cover(LOCATIONS, CLIENT_LOCATIONS, radius, county_name)
-        return set_cover_aggregation(LOCATIONS, CLIENT_LOCATIONS, county_name, radius)
+        aggregation_file = PROJECT_ROOT/'data'/'processed'/county_name/f"aggregation_{aggregation}_{int(1000*radius)}.json"
+        
+        ###Check if combination has already been attempted###
+        if path.exists(aggregation_file):
+            with open(aggregation_file, 'r') as f:
+                data = json.load(f)
+                LOCATIONS_1 = data['LOCATIONS']
+                CLIENT_LOCATIONS_1 = {int(key):value for key,value in CLIENT_LOCATIONS.items()}
+                return LOCATIONS_1, CLIENT_LOCATIONS_1
+        
+        else:
+            filename = PROJECT_ROOT / 'data'/ 'processed'/ county_name / f"radius_cover_{int(1000*radius)}.json"
+            if not path.exists(filename):
+                radius_cover(LOCATIONS, CLIENT_LOCATIONS, radius, county_name)
+            LOCATIONS_1, CLIENT_LOCATIONS_1 = set_cover_aggregation(LOCATIONS, CLIENT_LOCATIONS, county_name, radius)
+            
+            ###Store output in json file###
+            with open(aggregation_file, 'w') as f:
+                json.dump({"LOCATIONS": LOCATIONS_1, "CLIENT_LOCATIONS": CLIENT_LOCATIONS_1}, f)
+            
+            return LOCATIONS_1, CLIENT_LOCATIONS_1
         
     else:
-
+        
+        for loc_dict in LOCATIONS:
+            del loc_dict['lid']
+        
         return LOCATIONS, CLIENT_LOCATIONS
 
-LOCATIONS, CLIENT_LOCATIONS = aggregate_data(county_name = 'charlottesville_city', aggregation = 2)
+################################# GLOBAL DATASTRUCTURES #############################################
+
+LOCATIONS, CLIENT_LOCATIONS = aggregate_data(county_name = 'charlottesville_city', aggregation = 0, radius = 0.01)
+
+#####################################################################################################
