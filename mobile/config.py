@@ -242,11 +242,11 @@ def set_cover_aggregation(LOCATIONS, CLIENT_LOCATIONS, county_name: str = 'charl
     for key, val in CLIENT_LOCATIONS.items():
         new_lid_list = []
         for loc in val:
+            
             if not LOCATIONS[loc]['home']:
                 for elem in coverage_matching[loc]:
-                    
                     #Avoid repeats in client locations
-                    if elem not in new_lid_list:
+                    if ind_to_reindex[elem] not in new_lid_list:
                         new_lid_list.append(ind_to_reindex[elem])
             else:
                 new_lid_list.append(ind_to_reindex[loc])
@@ -422,7 +422,7 @@ def aggregate_data(county_name: str = 'charlottesville_city', aggregation: int =
             with open(aggregation_file, 'r') as f:
                 data = json.load(f)
                 LOCATIONS_1 = data['LOCATIONS']
-                CLIENT_LOCATIONS_1 = {int(key):value for key,value in CLIENT_LOCATIONS.items()}
+                CLIENT_LOCATIONS_1 = {int(key):value for key,value in data['CLIENT_LOCATIONS'].items()}
                 return LOCATIONS_1, CLIENT_LOCATIONS_1
         
         else:
@@ -446,6 +446,6 @@ def aggregate_data(county_name: str = 'charlottesville_city', aggregation: int =
 
 ################################# GLOBAL DATASTRUCTURES #############################################
 
-LOCATIONS, CLIENT_LOCATIONS = aggregate_data(county_name = 'charlottesville_city', aggregation = 0, radius = 0.01)
+LOCATIONS, CLIENT_LOCATIONS = aggregate_data(county_name = 'charlottesville_city', aggregation = 1, radius = 0.01)
 
 #####################################################################################################

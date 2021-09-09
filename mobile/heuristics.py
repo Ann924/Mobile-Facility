@@ -42,7 +42,7 @@ def fpt(k: int, s: int):
         if len(new_list)>0:
             client_locations_excluded.append(new_list)
     
-    locations = [LOCATIONS[i]['lid_ind'] for i in range(len(LOCATIONS)) if not LOCATIONS[i]['home']]
+    locations = [i for i in range(len(LOCATIONS)) if not LOCATIONS[i]['home']]
     
     G, loc_map, c_loc_map = precompute_distances(client_locations_excluded, locations)
     
@@ -54,10 +54,11 @@ def fpt(k: int, s: int):
         obj_value = assign_client_facilities(G, loc_map, c_loc_map, client_locations_excluded, facilities)
         return obj_value, facilities
     
-    futures = [process.remote(guess) for guess in powerset(list(potential_facility_locations))]
+    futures = [process.remote(list(guess)) for guess in powerset(list(potential_facility_locations))]
     results = ray.get(futures)
 
     min_obj_guess: Tuple[int, List[int]] = min(results)
+    print(min_obj_guess[1])
     return min_obj_guess, assign_facilities(min_obj_guess[1])
 
 def center_of_centers2(k: int):
@@ -137,7 +138,7 @@ def center_of_centers(k: int):
                 
         clients.append(effective_center)
         
-    locations = [LOCATIONS[i]['lid_ind'] for i in range(len(LOCATIONS)) if not LOCATIONS[i]['home']]
+    locations = [i for i in range(len(LOCATIONS)) if not LOCATIONS[i]['home']]
     facilities = k_supplier(clients, locations, k)
     
     return facilities, assign_facilities(facilities)
@@ -158,9 +159,9 @@ def center_of_homes(k: int):
     assignments : List[Tuple[int, int]]
         visited location and facility assignment indexed by each client
     """
-    print(len(LOCATIONS))
+    #print(len(LOCATIONS))
     
-    potential_facility_locations = [LOCATIONS[key]['lid_ind'] for key in range(len(LOCATIONS)) if not LOCATIONS[key]['home']]
+    potential_facility_locations = [key for key in range(len(LOCATIONS)) if not LOCATIONS[key]['home']]
     homes = set(locs[0] for locs in CLIENT_LOCATIONS.values())
     
     facilities = k_supplier(list(homes), potential_facility_locations, k)
@@ -174,5 +175,5 @@ def most_coverage(k: int):
 
 def most_populous(k: int):
     
-    facilities = [LOCATIONS[i]['lid_ind'] for i in range(k)]
+    facilities = [i for i in range(k)]
     return facilities, assign_facilities(facilities)

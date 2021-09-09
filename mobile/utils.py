@@ -49,6 +49,7 @@ def assign_facilities(facilities: List[int]):
     assignments: List[Tuple[int, int]] = []
     
     for key in CLIENT_LOCATIONS.keys():
+        #print(CLIENT_LOCATIONS[key])
         possible_assignments = [(calculate_distance(loc, fac), loc, fac) for loc in CLIENT_LOCATIONS[key] for fac in facilities]
         
         min_loc = min(possible_assignments)
@@ -106,8 +107,8 @@ def cover_most(s: int):
     covered = set()
     selected = []
     for i in range(s):
-        most_coverage = max([(len(set(LOCATIONS[l]['pid']) - covered), l, LOCATIONS[l]['lid_ind']) for l in range(len(LOCATIONS))])
-        selected.append(most_coverage[2])
+        most_coverage = max([(len(set(LOCATIONS[l]['pid']) - covered), l, LOCATIONS[l]) for l in range(len(LOCATIONS))])
+        selected.append(most_coverage[1])
         covered = covered.union(LOCATIONS[most_coverage[1]]['pid'])
     print(f"COVERAGE OF CLIENTS BY {s} LOCATIONS: ", len(covered)/len(CLIENT_LOCATIONS.keys()))
     return selected
@@ -214,7 +215,7 @@ def _check_radius(radius: int, clients: List[int]):
     """
     
     pairwise_disjoint = set()
-    
+    #print(clients)
     V = set(clients)
     while len(V)!=0:
         v = V.pop()
