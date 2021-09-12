@@ -24,9 +24,17 @@ LOCATIONS : List containing dicts of the following
 CLIENT_LOCATIONS : Dict mapping pids of clients to the locations (represented by location indicies from LOCATIONS) each client visits
 
 LOCATIONS_agg : List of dicts of the aggregated locations (within radius 10 m)
+<<<<<<< HEAD
     "lid_ind" : The sorted order numbering of aggregated locations
     "longitude" : Longitude of the center
     "latitude" : Latitude of the center
+=======
+    "lid" : The index of the lid (from LOCATIONS) of the center of the aggregated location
+    "lid_ind" : The index of each location in LOCATIONS
+    "longitude" : Longitude of the center
+    "latitude" : Latitude of the center
+    "members" : The lid indices that belong to this cluster
+>>>>>>> 1764347dbd3edc0c22a38dd6f65887bc35634632
     "activity" : The number of clients that visit this aggregated cluster of locations
     "pid" : The list of clients that visit this aggregated cluster of locations
     "home" : Is the location a residential location?
@@ -129,7 +137,6 @@ def radius_cover(LOCATIONS, CLIENT_LOCATIONS, radius: float, county_name: str = 
     
     radius_dict = {}
     LOCATIONS_act = [(ind, value) for ind,value in enumerate(LOCATIONS) if not LOCATIONS[ind]['home']]
-    print(len(LOCATIONS_act))
     
     for i in range(len(LOCATIONS_act)):
         loc1 = LOCATIONS_act[i][0]
@@ -399,7 +406,6 @@ def single_linkage_aggregation2(LOCATIONS, CLIENT_LOCATIONS, county_name: str = 
     return LOCATIONS_agg, CLIENT_LOCATIONS_agg
 
 def aggregate_data(county_name: str = 'charlottesville_city', aggregation: int = 1, radius: float = 0.01):
-    
     """
     Aggregation Options
         0 : default, no aggregation
@@ -414,7 +420,6 @@ def aggregate_data(county_name: str = 'charlottesville_city', aggregation: int =
         return single_linkage_aggregation2(LOCATIONS, CLIENT_LOCATIONS, county_name, radius)
         
     elif aggregation == 1:
-        
         aggregation_file = PROJECT_ROOT/'data'/'processed'/county_name/f"aggregation_{aggregation}_{int(1000*radius)}.json"
         
         ###Check if combination has already been attempted###

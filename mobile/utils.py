@@ -49,7 +49,6 @@ def assign_facilities(facilities: List[int]):
     assignments: List[Tuple[int, int]] = []
     
     for key in CLIENT_LOCATIONS.keys():
-        #print(CLIENT_LOCATIONS[key])
         possible_assignments = [(calculate_distance(loc, fac), loc, fac) for loc in CLIENT_LOCATIONS[key] for fac in facilities]
         
         min_loc = min(possible_assignments)
@@ -173,7 +172,8 @@ def k_supplier(clients: List[int], locations: List[int], k: int):
     """
     l = 0
     #r = 40075
-    r=1000
+    r=100
+
     to_ret = -1
     #EPSILON = 10**(-6)
     EPSILON = 10**(-4)
@@ -215,7 +215,7 @@ def _check_radius(radius: int, clients: List[int]):
     """
     
     pairwise_disjoint = set()
-    #print(clients)
+
     V = set(clients)
     while len(V)!=0:
         v = V.pop()

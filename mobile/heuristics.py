@@ -54,11 +54,10 @@ def fpt(k: int, s: int):
         obj_value = assign_client_facilities(G, loc_map, c_loc_map, client_locations_excluded, facilities)
         return obj_value, facilities
     
-    futures = [process.remote(list(guess)) for guess in powerset(list(potential_facility_locations))]
+    futures = [process.remote(guess) for guess in powerset(list(potential_facility_locations))]
     results = ray.get(futures)
 
     min_obj_guess: Tuple[int, List[int]] = min(results)
-    print(min_obj_guess[1])
     return min_obj_guess, assign_facilities(min_obj_guess[1])
 
 def center_of_centers2(k: int):
@@ -174,6 +173,5 @@ def most_coverage(k: int):
     return facilities, assign_facilities(facilities)
 
 def most_populous(k: int):
-    
     facilities = [i for i in range(k)]
     return facilities, assign_facilities(facilities)
