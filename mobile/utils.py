@@ -106,8 +106,8 @@ def cover_most(s: int):
     covered = set()
     selected = []
     for i in range(s):
-        most_coverage = max([(len(set(LOCATIONS[l]['pid']) - covered), l, LOCATIONS[l]['lid_ind']) for l in range(len(LOCATIONS))])
-        selected.append(most_coverage[2])
+        most_coverage = max([(len(set(LOCATIONS[l]['pid']) - covered), l, LOCATIONS[l]) for l in range(len(LOCATIONS))])
+        selected.append(most_coverage[1])
         covered = covered.union(LOCATIONS[most_coverage[1]]['pid'])
     print(f"COVERAGE OF CLIENTS BY {s} LOCATIONS: ", len(covered)/len(CLIENT_LOCATIONS.keys()))
     return selected
@@ -173,6 +173,7 @@ def k_supplier(clients: List[int], locations: List[int], k: int):
     l = 0
     #r = 40075
     r=100
+
     to_ret = -1
     #EPSILON = 10**(-6)
     EPSILON = 10**(-4)
@@ -214,7 +215,7 @@ def _check_radius(radius: int, clients: List[int]):
     """
     
     pairwise_disjoint = set()
-    
+
     V = set(clients)
     while len(V)!=0:
         v = V.pop()
