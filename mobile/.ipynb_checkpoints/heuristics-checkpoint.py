@@ -4,7 +4,101 @@ from mobile.utils import *
 from mobile.config import LOCATIONS, CLIENT_LOCATIONS, HOME_SHIFT
 import time
 import ray
+import numpy as np
+import scipy
+import scipy.stats
+import scipy.special
 from joblib import Parallel, delayed
+
+def cover_approx(neighbors, k: int):
+    
+    l = 0.1
+    h = 2.5
+    
+    facilities = []
+    objective = 10005
+    
+    #alpha = 0
+    
+    #for i in range(1, len(CLIENT_LOCATIONS)+1):
+    #    alpha += 1/i
+    
+    #print(alpha)
+    
+    alpha = 1
+    
+    while h-l > 1e-3:
+        r = (l+h)/2
+        
+        print(r)
+        
+        sol = set_cover_softmax(neighbors, radius = r, top=10, times = 40)
+        
+        if len(sol) <= alpha * k:
+            h = (l+h)/2
+            facilities = sol
+            objective = r
+        else:
+            l = (l+h)/2
+        
+    return facilities, objective
+
+def set_cover_softmax(neighbors, radius: float, top: int = 1, times: int = 1):
+
+    radius_dict = {}
+
+    for l, neighbor in tqdm.tqdm(neighbors.items()):
+
+        radius_dict[l] = set()
+
+        for n in neighbor:
+
+            if n[0] <= radius:                
+                ngbr = n[1]
+                radius_dict[l] = radius_dict[l].union(LOCATIONS[ngbr]['pid'])
+            else:
+                break
+    
+    total_length = len(CLIENT_LOCATIONS)
+    radius_dict_id = ray.put(radius_dict)
+    
+    
+    @ray.remote
+    def process(radius_dict):
+        #print('starting process')
+        covered = set()
+        chosen = set()
+
+        while len(covered) != total_length:
+
+            max_coverage = []
+
+            for loc in radius_dict.keys():
+
+                if loc not in chosen:
+
+                    individuals_covered = radius_dict[loc] - covered
+                    max_coverage.append((len(individuals_covered), loc, individuals_covered))
+
+            max_coverage = sorted(max_coverage, reverse = True)
+
+            if max_coverage[0][0] == 0:
+                break
+
+            choice = max_coverage[scipy.stats.boltzmann.rvs(lambda_=0.8, N=top)]
+
+            covered = covered.union(choice[2])
+            chosen.add(choice[1])
+            #print(len(covered))
+
+        return (len(chosen), chosen, covered)
+
+    #print("here")
+    results = [ray.get(process.remote(radius_dict_id)) for _ in range(times)]
+    results = sorted(results)
+       
+    
+    return results[0][1]
 
 def fpt(k: int, s: int):
     """
@@ -42,7 +136,7 @@ def fpt(k: int, s: int):
         if len(new_list)>0:
             client_locations_excluded.append(new_list)
     
-    locations = [LOCATIONS[i]['lid_ind'] for i in range(len(LOCATIONS)) if not LOCATIONS[i]['home']]
+    locations = [i for i in range(len(LOCATIONS)) if not LOCATIONS[i]['home']]
     
     G, loc_map, c_loc_map = precompute_distances(client_locations_excluded, locations)
     
@@ -137,7 +231,7 @@ def center_of_centers(k: int):
                 
         clients.append(effective_center)
         
-    locations = [LOCATIONS[i]['lid_ind'] for i in range(len(LOCATIONS)) if not LOCATIONS[i]['home']]
+    locations = [i for i in range(len(LOCATIONS)) if not LOCATIONS[i]['home']]
     facilities = k_supplier(clients, locations, k)
     
     return facilities, assign_facilities(facilities)
@@ -158,9 +252,9 @@ def center_of_homes(k: int):
     assignments : List[Tuple[int, int]]
         visited location and facility assignment indexed by each client
     """
-    print(len(LOCATIONS))
+    #print(len(LOCATIONS))
     
-    potential_facility_locations = [LOCATIONS[key]['lid_ind'] for key in range(len(LOCATIONS)) if not LOCATIONS[key]['home']]
+    potential_facility_locations = [key for key in range(len(LOCATIONS)) if not LOCATIONS[key]['home']]
     homes = set(locs[0] for locs in CLIENT_LOCATIONS.values())
     
     facilities = k_supplier(list(homes), potential_facility_locations, k)
@@ -173,6 +267,5 @@ def most_coverage(k: int):
     return facilities, assign_facilities(facilities)
 
 def most_populous(k: int):
-    
-    facilities = [LOCATIONS[i]['lid_ind'] for i in range(k)]
+    facilities = [i for i in range(k)]
     return facilities, assign_facilities(facilities)

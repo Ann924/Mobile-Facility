@@ -451,6 +451,6 @@ def aggregate_data(county_name: str = 'charlottesville_city', aggregation: int =
 
 ################################# GLOBAL DATASTRUCTURES #############################################
 
-LOCATIONS, CLIENT_LOCATIONS = aggregate_data(county_name = 'charlottesville_city', aggregation = 1, radius = 0.01)
+LOCATIONS, CLIENT_LOCATIONS = aggregate_data(county_name = 'charlottesville_city', aggregation = 1, radius = 0.025)
 
 #####################################################################################################

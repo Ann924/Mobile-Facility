@@ -4,6 +4,7 @@ import math
 from mobile.config import LOCATIONS, CLIENT_LOCATIONS, HOME_SHIFT, address
 import geopy.distance
 from itertools import chain, combinations
+import tqdm
 
 def powerset(iterable):
     """
@@ -91,6 +92,24 @@ def precompute_distances(client_locations: List[List[int]], locations: List[int]
 #########################################################################################################
 #                                 Utility Functions For Heuristics                                      #
 #########################################################################################################
+
+def generate_sorted_list():
+    
+    neighbors = {}
+    
+    LOCATIONS_act = [l for l in range(len(LOCATIONS)) if not LOCATIONS[l]['home']]
+    
+    for l in tqdm.tqdm(LOCATIONS_act):
+        sorted_distance_neighbors = []
+        
+        for j in range(len(LOCATIONS)):
+            dist = calculate_distance(l, j)
+            sorted_distance_neighbors.append((dist, j))
+            
+        sorted_distance_neighbors = sorted(sorted_distance_neighbors, reverse = False)
+        neighbors[l] = sorted_distance_neighbors
+    
+    return neighbors
 
 def cover_most(s: int):
     """
