@@ -13,8 +13,26 @@ import geopy
 import json
 
 
-
 data = {}
+
+"""
+neighbors = generate_sorted_list()
+data['cover_approx'] = []
+
+ray.init(ignore_reinit_error=True)
+
+neighbors_id = ray.put(neighbors)
+
+@ray.remote
+def process(neighbors, k):
+    (fac, obj_fake) = cover_approx(neighbors, k)
+    #asgn = assign_facilities(fac)
+    #obj = calculate_objective(asgn, 95)
+    fac = list(fac)
+    return [fac, "to do", obj_fake]
+
+data['cover_approx'] = [ray.get(process.remote(neighbors_id, k)) for k in range(3, 11, 1)]
+"""
 
 for alg in [center_of_homes, most_coverage, most_populous]:
     data[alg.__name__] = []
@@ -24,16 +42,7 @@ for alg in [center_of_homes, most_coverage, most_populous]:
         obj = calculate_objective(asgn, 95)
         
         data[alg.__name__].append([fac, asgn, obj])
-        
-neighbors = generate_sorted_list()
-data['cover_approx'] = []
-
-for k in range(3,11,1):
-    (fac, obj_fake) = cover_approx(neighbors, k)
-    asgn = assign_facilities(fac)
-    obj = calculate_objective(asgn, 95)
-    data['cover_approx'].append([fac, asgn, obj])
-    
+         
 data['fpt15'] = []
 
 for k in range(3,11,1):

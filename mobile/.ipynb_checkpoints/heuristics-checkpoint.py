@@ -60,12 +60,13 @@ def set_cover_softmax(neighbors, radius: float, top: int = 1, times: int = 1):
                 break
     
     total_length = len(CLIENT_LOCATIONS)
-    radius_dict_id = ray.put(radius_dict)
+    #radius_dict_id = ray.put(radius_dict)
     
-    
-    @ray.remote
-    def process(radius_dict):
+    results = []
+    #@ray.remote
+    #def process(radius_dict):
         #print('starting process')
+    for i in range(times):
         covered = set()
         chosen = set()
 
@@ -91,10 +92,11 @@ def set_cover_softmax(neighbors, radius: float, top: int = 1, times: int = 1):
             chosen.add(choice[1])
             #print(len(covered))
 
-        return (len(chosen), chosen, covered)
+        #return (len(chosen), chosen, covered)
+        results.append((len(chosen), chosen, covered))
 
     #print("here")
-    results = [ray.get(process.remote(radius_dict_id)) for _ in range(times)]
+    #results = [ray.get(process.remote(radius_dict_id)) for _ in range(times)]
     results = sorted(results)
        
     
